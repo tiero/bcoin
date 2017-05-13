@@ -1,17 +1,13 @@
-# Bcoin
+# Lcoin (Bcoin ported to Litecoin)
 
-__NOTE__: The latest release of bcoin contains a non-backward compatible change
+__NOTE__: The latest release of lcoin contains a non-backward compatible change
 to the rest API. Please read the [changelog]'s "migrating" section for more
 details.
 
 ---
 
-**Bcoin** is an alternative implementation of the bitcoin protocol, written in
+**Lcoin** is an alternative implementation of the bitcoin protocol, written in
 node.js.
-
-Although still in a beta state, bcoin is well tested and aware of all known
-consensus rules. It is currently used in production as the consensus backend
-and wallet system for [purse.io][purse].
 
 ## Uses
 
@@ -27,10 +23,10 @@ Try it in the browser: http://bcoin.io/browser.html
 ## Install
 
 ```
-$ git clone git://github.com/bcoin-org/bcoin.git
-$ cd bcoin
+$ git clone git://github.com/bcoin-org/lcoin.git
+$ cd lcoin
 $ npm install
-$ ./bin/bcoin
+$ ./bin/lcoin
 ```
 
 See the [Beginner's Guide][guide] for more in-depth installation instructions.
@@ -47,7 +43,7 @@ Join us on [freenode][freenode] in the [#bcoin][irc] channel.
 
 ## Disclaimer
 
-Bcoin does not guarantee you against theft or lost funds due to bugs, mishaps,
+Lcoin does not guarantee you against theft or lost funds due to bugs, mishaps,
 or your own incompetence. You and you alone are responsible for securing your
 money.
 
