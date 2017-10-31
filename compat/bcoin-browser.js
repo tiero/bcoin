@@ -5,7 +5,7 @@
  * https://github.com/bcoin-org/bcoin
  */
 
-'use strict';
+"use strict";
 
 /**
  * A bcoin "environment" which exposes all
@@ -138,139 +138,38 @@ bcoin.set = function set(network) {
  * Cache all necessary modules.
  */
 
-bcoin.cache = function cache() {
-  ;
-};
+bcoin.cache = function cache() {};
 
 /*
  * Expose
  */
 
-// Horrible BIP
-bcoin.bip70 = require('./bip70');
-
-// Blockchain
-bcoin.blockchain = require('./blockchain');
-bcoin.chain = require('./blockchain/chain');
-bcoin.chaindb = require('./blockchain/chaindb');
-bcoin.chainentry = require('./blockchain/chainentry');
-
-// BTC
-bcoin.btc = require('./btc');
-bcoin.amount = require('./btc/amount');
-bcoin.uri = require('./btc/uri');
-
-// Coins
-bcoin.coins = require('./coins');
-bcoin.coinview = require('./coins/coinview');
-
 // Crypto
-bcoin.crypto = require('./crypto');
-bcoin.bn = require('./crypto/bn');
-bcoin.secp256k1 = require('./crypto/secp256k1');
-bcoin.schnorr = require('./crypto/schnorr');
-
-// DB
-bcoin.db = require('./db');
-bcoin.ldb = require('./db/ldb');
+bcoin.crypto = require("./crypto");
+bcoin.secp256k1 = require("./crypto/secp256k1");
 
 // HD
-bcoin.hd = require('./hd');
-
-// HTTP
-bcoin.http = require('./http');
-bcoin.rpc = require('./http/rpc');
-
-// Mempool
-bcoin.txmempool = require('./mempool');
-bcoin.fees = require('./mempool/fees');
-bcoin.mempool = require('./mempool/mempool');
-bcoin.mempoolentry = require('./mempool/mempoolentry');
-
-// Miner
-bcoin.mining = require('./mining');
-bcoin.miner = require('./mining/miner');
-bcoin.template = require('./mining/template');
-
-// Net
-bcoin.net = require('./net');
-bcoin.bip150 = require('./net/bip150');
-bcoin.bip151 = require('./net/bip151');
-bcoin.bip152 = require('./net/bip152');
-bcoin.dns = require('./net/dns');
-bcoin.packets = require('./net/packets');
-bcoin.peer = require('./net/peer');
-bcoin.pool = require('./net/pool');
-bcoin.tcp = require('./net/tcp');
-
-// Node
-bcoin.node = require('./node');
-bcoin.config = require('./node/config');
-bcoin.fullnode = require('./node/fullnode');
-bcoin.logger = require('./node/logger');
-bcoin.spvnode = require('./node/spvnode');
+bcoin.hd = require("./hd");
 
 // Primitives
-bcoin.primitives = require('./primitives');
-bcoin.address = require('./primitives/address');
-bcoin.block = require('./primitives/block');
-bcoin.coin = require('./primitives/coin');
-bcoin.headers = require('./primitives/headers');
-bcoin.input = require('./primitives/input');
-bcoin.invitem = require('./primitives/invitem');
-bcoin.keyring = require('./primitives/keyring');
-bcoin.merkleblock = require('./primitives/merkleblock');
-bcoin.mtx = require('./primitives/mtx');
-bcoin.netaddress = require('./primitives/netaddress');
-bcoin.outpoint = require('./primitives/outpoint');
-bcoin.output = require('./primitives/output');
-bcoin.tx = require('./primitives/tx');
-
-// Protocol
-bcoin.protocol = require('./protocol');
-bcoin.consensus = require('./protocol/consensus');
-bcoin.errors = require('./protocol/errors');
-bcoin.network = require('./protocol/network');
-bcoin.networks = require('./protocol/networks');
-bcoin.policy = require('./protocol/policy');
-bcoin.timedata = require('./protocol/timedata');
+bcoin.address = require("./primitives/address");
+bcoin.coin = require("./primitives/coin");
+bcoin.keyring = require("./primitives/keyring");
+bcoin.mtx = require("./primitives/mtx");
+bcoin.netaddress = require("./primitives/netaddress");
+bcoin.outpoint = require("./primitives/outpoint");
+bcoin.output = require("./primitives/output");
+bcoin.tx = require("./primitives/tx");
 
 // Script
-bcoin.txscript = require('./script');
-bcoin.opcode = require('./script/opcode');
-bcoin.program = require('./script/program');
-bcoin.script = require('./script/script');
-bcoin.scriptnum = require('./script/scriptnum');
-bcoin.sigcache = require('./script/sigcache');
-bcoin.stack = require('./script/stack');
-bcoin.witness = require('./script/witness');
-
-// Utils
-bcoin.utils = require('./utils');
-bcoin.base32 = require('./utils/base32');
-bcoin.base58 = require('./utils/base58');
-bcoin.bloom = require('./utils/bloom');
-bcoin.co = require('./utils/co');
-bcoin.encoding = require('./utils/encoding');
-bcoin.int64 = require('./utils/int64');
-bcoin.lock = require('./utils/lock');
-bcoin.reader = require('./utils/reader');
-bcoin.staticwriter = require('./utils/staticwriter');
-bcoin.util = require('./utils/util');
-bcoin.writer = require('./utils/writer');
-
-// Wallet
-bcoin.wallet = require('./wallet');
-bcoin.path = require('./wallet/path');
-bcoin.walletkey = require('./wallet/walletkey');
-bcoin.walletdb = require('./wallet/walletdb');
-
-// Workers
-bcoin.workers = require('./workers');
-bcoin.workerpool = require('./workers/workerpool');
-
-// Package Info
-bcoin.pkg = require('./pkg');
+bcoin.txscript = require("./script");
+bcoin.opcode = require("./script/opcode");
+bcoin.program = require("./script/program");
+bcoin.script = require("./script/script");
+bcoin.scriptnum = require("./script/scriptnum");
+bcoin.sigcache = require("./script/sigcache");
+bcoin.stack = require("./script/stack");
+bcoin.witness = require("./script/witness");
 
 /*
  * Expose Globally
