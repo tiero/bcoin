@@ -11,9 +11,6 @@
   "author": "Fedor Indutny <fedor@indutny.com>",
   "contributors": ["Christopher Jeffrey <chjjeffrey@gmail.com>"],
   "keywords": ["bcoin", "bitcoin", "blockchain", "cryptocurrency", "wallet"],
-  "engines": {
-    "node": ">=7.6.0"
-  },
   "dependencies": {
     "babel-cli": "^6.26.0",
     "babel-polyfill": "^6.26.0",
@@ -22,9 +19,7 @@
     "n64": "0.0.18"
   },
   "optionalDependencies": {
-    "bcoin-native": "0.0.23",
     "leveldown": "1.7.2",
-    "secp256k1": "3.3.0",
     "socket.io": "2.0.3",
     "socket.io-client": "2.0.3"
   },
