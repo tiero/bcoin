@@ -526,6 +526,7 @@ function UPNPService(options) {
 
 UPNPService.prototype.createRequest = function createRequest(action, args) {
   var type = (0, _stringify2.default)(this.serviceType);
+
   var params = '';
 
   var _iteratorNormalCompletion2 = true;
@@ -946,9 +947,9 @@ XMLElement.prototype.find = function find(name) {
 
       if (child.type === name) return child;
 
-      child = child.find(name);
+      var desc = child.find(name);
 
-      if (child) return child;
+      if (desc) return desc;
     }
   } catch (err) {
     _didIteratorError4 = true;

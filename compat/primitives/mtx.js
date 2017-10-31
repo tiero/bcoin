@@ -259,10 +259,10 @@ MTX.prototype.addTX = function addTX(tx, index, height) {
   if (height == null) height = -1;
 
   var input = Input.fromTX(tx, index);
-  var coin = Coin.fromTX(tx, index, height);
 
   this.inputs.push(input);
-  this.view.addCoin(coin);
+
+  this.view.addIndex(tx, index, height);
 
   return input;
 };

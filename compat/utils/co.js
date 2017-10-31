@@ -322,7 +322,9 @@ function callbackify(func) {
 
   var ctx = {
     timer: null,
-    stopped: false
+    stopped: false,
+    running: false,
+    resolve: null
   };
 
   var cb = function () {
@@ -335,21 +337,24 @@ function callbackify(func) {
               ctx.timer = null;
 
               _context2.prev = 2;
-              _context2.next = 5;
+
+              ctx.running = true;
+              _context2.next = 6;
               return func.call(self);
 
-            case 5:
-              _context2.prev = 5;
+            case 6:
+              _context2.prev = 6;
 
-              if (!ctx.stopped) ctx.timer = setTimeout(cb, time);
-              return _context2.finish(5);
+              ctx.running = false;
+              if (!ctx.stopped) ctx.timer = setTimeout(cb, time);else if (ctx.resolve) ctx.resolve();
+              return _context2.finish(6);
 
-            case 8:
+            case 10:
             case 'end':
               return _context2.stop();
           }
         }
-      }, _callee2, _this2, [[2,, 5, 8]]);
+      }, _callee2, _this2, [[2,, 6, 10]]);
     }));
 
     return function cb() {
@@ -369,11 +374,21 @@ function callbackify(func) {
 
 function stopInterval(ctx) {
   assert(ctx);
+
   if (ctx.timer != null) {
     clearTimeout(ctx.timer);
     ctx.timer = null;
   }
+
   ctx.stopped = true;
+
+  if (ctx.running) {
+    return new _promise2.default(function (r) {
+      ctx.resolve = r;
+    });
+  }
+
+  return _promise2.default.resolve();
 }
 
 /**

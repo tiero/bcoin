@@ -157,7 +157,7 @@ WalletDB.layout = layout;
  */
 
 WalletDB.prototype._init = function _init() {
-  var items = 1000000;
+  var items = 3000000;
   var flag = -1;
 
   // Highest number of items with an
@@ -797,7 +797,7 @@ WalletDB.prototype.init = function () {
 
 WalletDB.prototype.watch = function () {
   var _ref12 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee12() {
-    var iter, hashes, outpoints, item, data, _item, _layout$oo, _layout$oo2, hash, index, outpoint, _data;
+    var iter, hashes, outpoints, _iter, key, data, _iter2, _key, _layout$oo, _layout$oo2, hash, index, outpoint, _data;
 
     return _regenerator2.default.wrap(function _callee12$(_context12) {
       while (1) {
@@ -815,102 +815,90 @@ WalletDB.prototype.watch = function () {
             return iter.next();
 
           case 5:
-            item = _context12.sent;
-
-            if (item) {
-              _context12.next = 8;
+            if (!_context12.sent) {
+              _context12.next = 20;
               break;
             }
 
-            return _context12.abrupt('break', 21);
-
-          case 8:
-            _context12.prev = 8;
-            data = layout.pp(item.key);
+            _iter = iter, key = _iter.key;
+            _context12.prev = 7;
+            data = layout.pp(key);
 
             this.filter.add(data, 'hex');
-            _context12.next = 18;
+            _context12.next = 17;
             break;
 
-          case 13:
-            _context12.prev = 13;
-            _context12.t0 = _context12['catch'](8);
-            _context12.next = 17;
+          case 12:
+            _context12.prev = 12;
+            _context12.t0 = _context12['catch'](7);
+            _context12.next = 16;
             return iter.end();
 
-          case 17:
+          case 16:
             throw _context12.t0;
 
-          case 18:
+          case 17:
 
             hashes++;
-
-          case 19:
             _context12.next = 3;
             break;
 
-          case 21:
+          case 20:
 
             iter = this.db.iterator({
               gte: layout.o(encoding.NULL_HASH, 0),
               lte: layout.o(encoding.HIGH_HASH, 0xffffffff)
             });
 
-          case 22:
-            _context12.next = 24;
+          case 21:
+            _context12.next = 23;
             return iter.next();
 
-          case 24:
-            _item = _context12.sent;
-
-            if (_item) {
-              _context12.next = 27;
+          case 23:
+            if (!_context12.sent) {
+              _context12.next = 40;
               break;
             }
 
-            return _context12.abrupt('break', 42);
-
-          case 27:
-            _context12.prev = 27;
-            _layout$oo = layout.oo(_item.key), _layout$oo2 = (0, _slicedToArray3.default)(_layout$oo, 2), hash = _layout$oo2[0], index = _layout$oo2[1];
+            _iter2 = iter, _key = _iter2.key;
+            _context12.prev = 25;
+            _layout$oo = layout.oo(_key), _layout$oo2 = (0, _slicedToArray3.default)(_layout$oo, 2), hash = _layout$oo2[0], index = _layout$oo2[1];
             outpoint = new Outpoint(hash, index);
             _data = outpoint.toRaw();
 
             this.filter.add(_data);
-            _context12.next = 39;
+            _context12.next = 37;
             break;
 
-          case 34:
-            _context12.prev = 34;
-            _context12.t1 = _context12['catch'](27);
-            _context12.next = 38;
+          case 32:
+            _context12.prev = 32;
+            _context12.t1 = _context12['catch'](25);
+            _context12.next = 36;
             return iter.end();
 
-          case 38:
+          case 36:
             throw _context12.t1;
 
-          case 39:
+          case 37:
 
             outpoints++;
-
-          case 40:
-            _context12.next = 22;
+            _context12.next = 21;
             break;
 
-          case 42:
+          case 40:
 
             this.logger.info('Added %d hashes to WalletDB filter.', hashes);
             this.logger.info('Added %d outpoints to WalletDB filter.', outpoints);
 
-            _context12.next = 46;
+            _context12.next = 44;
             return this.setFilter();
 
-          case 46:
+          case 44:
           case 'end':
             return _context12.stop();
         }
       }
-    }, _callee12, this, [[8, 13], [27, 34]]);
+    }, _callee12, this, [[7, 12], [25, 32]]);
   }));
 
   function watch() {
@@ -1334,7 +1322,7 @@ WalletDB.prototype.backup = function backup(path) {
 
 WalletDB.prototype.wipe = function () {
   var _ref19 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee19() {
-    var iter, batch, total, item;
+    var iter, batch, total, key;
     return _regenerator2.default.wrap(function _callee19$(_context19) {
       while (1) {
         switch (_context19.prev = _context19.next) {
@@ -1354,57 +1342,53 @@ WalletDB.prototype.wipe = function () {
             return iter.next();
 
           case 7:
-            item = _context19.sent;
-
-            if (item) {
-              _context19.next = 10;
+            if (!_context19.sent) {
+              _context19.next = 25;
               break;
             }
 
-            return _context19.abrupt('break', 26);
-
-          case 10:
-            _context19.prev = 10;
-            _context19.t0 = item.key[0];
-            _context19.next = _context19.t0 === 0x62 ? 14 : _context19.t0 === 0x63 ? 14 : _context19.t0 === 0x65 ? 14 : _context19.t0 === 0x74 ? 14 : _context19.t0 === 0x6f ? 14 : _context19.t0 === 0x68 ? 14 : _context19.t0 === 0x52 ? 14 : 17;
+            key = iter.key;
+            _context19.prev = 9;
+            _context19.t0 = key[0];
+            _context19.next = _context19.t0 === 0x62 ? 13 : _context19.t0 === 0x63 ? 13 : _context19.t0 === 0x65 ? 13 : _context19.t0 === 0x74 ? 13 : _context19.t0 === 0x6f ? 13 : _context19.t0 === 0x68 ? 13 : _context19.t0 === 0x52 ? 13 : 16;
             break;
 
-          case 14:
+          case 13:
             // R
-            batch.del(item.key);
+            batch.del(key);
             total++;
-            return _context19.abrupt('break', 17);
+            return _context19.abrupt('break', 16);
 
-          case 17:
-            _context19.next = 24;
+          case 16:
+            _context19.next = 23;
             break;
 
-          case 19:
-            _context19.prev = 19;
-            _context19.t1 = _context19['catch'](10);
-            _context19.next = 23;
+          case 18:
+            _context19.prev = 18;
+            _context19.t1 = _context19['catch'](9);
+            _context19.next = 22;
             return iter.end();
 
-          case 23:
+          case 22:
             throw _context19.t1;
 
-          case 24:
+          case 23:
             _context19.next = 5;
             break;
 
-          case 26:
+          case 25:
 
             this.logger.warning('Wiped %d txdb records.', total);
 
-            _context19.next = 29;
+            _context19.next = 28;
             return batch.write();
 
-          case 29:
+          case 28:
           case 'end':
             return _context19.stop();
         }
       }
-    }, _callee19, this, [[10, 19]]);
+    }, _callee19, this, [[9, 18]]);
   }));
 
   function wipe() {
@@ -1422,7 +1406,7 @@ WalletDB.prototype.wipe = function () {
 
 WalletDB.prototype.getDepth = function () {
   var _ref20 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee20() {
-    var iter, item, depth;
+    var iter, key, depth;
     return _regenerator2.default.wrap(function _callee20$(_context20) {
       while (1) {
         switch (_context20.prev = _context20.next) {
@@ -1446,21 +1430,20 @@ WalletDB.prototype.getDepth = function () {
             return iter.next();
 
           case 3:
-            item = _context20.sent;
-
-            if (item) {
-              _context20.next = 6;
+            if (_context20.sent) {
+              _context20.next = 5;
               break;
             }
 
             return _context20.abrupt('return', 1);
 
-          case 6:
+          case 5:
+            key = iter.key;
             _context20.next = 8;
             return iter.end();
 
           case 8:
-            depth = layout.ww(item.key);
+            depth = layout.ww(key);
             return _context20.abrupt('return', depth + 1);
 
           case 10:
@@ -3703,7 +3686,7 @@ WalletDB.prototype.getState = function () {
 
 WalletDB.prototype.resetState = function () {
   var _ref45 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee45(tip, marked) {
-    var batch, state, iter, item;
+    var batch, state, iter;
     return _regenerator2.default.wrap(function _callee45$(_context45) {
       while (1) {
         switch (_context45.prev = _context45.next) {
@@ -3721,36 +3704,31 @@ WalletDB.prototype.resetState = function () {
             return iter.next();
 
           case 5:
-            item = _context45.sent;
-
-            if (item) {
-              _context45.next = 8;
+            if (!_context45.sent) {
+              _context45.next = 17;
               break;
             }
 
-            return _context45.abrupt('break', 19);
+            _context45.prev = 6;
 
-          case 8:
-            _context45.prev = 8;
-
-            batch.del(item.key);
-            _context45.next = 17;
+            batch.del(iter.key);
+            _context45.next = 15;
             break;
 
-          case 12:
-            _context45.prev = 12;
-            _context45.t0 = _context45['catch'](8);
-            _context45.next = 16;
+          case 10:
+            _context45.prev = 10;
+            _context45.t0 = _context45['catch'](6);
+            _context45.next = 14;
             return iter.end();
 
-          case 16:
+          case 14:
             throw _context45.t0;
 
-          case 17:
+          case 15:
             _context45.next = 3;
             break;
 
-          case 19:
+          case 17:
 
             state.startHeight = tip.height;
             state.startHash = tip.hash;
@@ -3760,19 +3738,19 @@ WalletDB.prototype.resetState = function () {
             batch.put(layout.h(tip.height), tip.toHash());
             batch.put(layout.R, state.toRaw());
 
-            _context45.next = 27;
+            _context45.next = 25;
             return batch.write();
 
-          case 27:
+          case 25:
 
             this.state = state;
 
-          case 28:
+          case 26:
           case 'end':
             return _context45.stop();
         }
       }
-    }, _callee45, this, [[8, 12]]);
+    }, _callee45, this, [[6, 10]]);
   }));
 
   function resetState(_x45, _x46) {
@@ -4231,7 +4209,7 @@ WalletDB.prototype.rollback = function () {
 
 WalletDB.prototype.revert = function () {
   var _ref53 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee53(target) {
-    var iter, total, item, height, block, txs, i, tx;
+    var iter, total, key, value, height, block, txs, i, tx;
     return _regenerator2.default.wrap(function _callee53$(_context53) {
       while (1) {
         switch (_context53.prev = _context53.next) {
@@ -4249,19 +4227,15 @@ WalletDB.prototype.revert = function () {
             return iter.next();
 
           case 4:
-            item = _context53.sent;
-
-            if (item) {
-              _context53.next = 7;
+            if (!_context53.sent) {
+              _context53.next = 28;
               break;
             }
 
-            return _context53.abrupt('break', 29);
-
-          case 7:
-            _context53.prev = 7;
-            height = layout.bb(item.key);
-            block = BlockMapRecord.fromRaw(height, item.value);
+            key = iter.key, value = iter.value;
+            _context53.prev = 6;
+            height = layout.bb(key);
+            block = BlockMapRecord.fromRaw(height, value);
             txs = block.toArray();
 
 
@@ -4269,48 +4243,48 @@ WalletDB.prototype.revert = function () {
 
             i = txs.length - 1;
 
-          case 13:
+          case 12:
             if (!(i >= 0)) {
-              _context53.next = 20;
+              _context53.next = 19;
               break;
             }
 
             tx = txs[i];
-            _context53.next = 17;
+            _context53.next = 16;
             return this._unconfirm(tx);
 
-          case 17:
+          case 16:
             i--;
-            _context53.next = 13;
+            _context53.next = 12;
             break;
 
-          case 20:
-            _context53.next = 27;
-            break;
-
-          case 22:
-            _context53.prev = 22;
-            _context53.t0 = _context53['catch'](7);
+          case 19:
             _context53.next = 26;
+            break;
+
+          case 21:
+            _context53.prev = 21;
+            _context53.t0 = _context53['catch'](6);
+            _context53.next = 25;
             return iter.end();
 
-          case 26:
+          case 25:
             throw _context53.t0;
 
-          case 27:
+          case 26:
             _context53.next = 2;
             break;
 
-          case 29:
+          case 28:
 
             this.logger.info('Rolled back %d WalletDB transactions.', total);
 
-          case 30:
+          case 29:
           case 'end':
             return _context53.stop();
         }
       }
-    }, _callee53, this, [[7, 22]]);
+    }, _callee53, this, [[6, 21]]);
   }));
 
   function revert(_x54) {

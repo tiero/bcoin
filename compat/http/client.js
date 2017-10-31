@@ -303,46 +303,46 @@ HTTPClient.prototype._request = function () {
             throw new Error('Unauthorized (bad API key).');
 
           case 10:
-            if (!(res.statusCode !== 200)) {
-              _context2.next = 12;
-              break;
-            }
-
-            throw new Error('Status code: ' + res.statusCode + '.');
-
-          case 12:
             if (!(res.type !== 'json')) {
-              _context2.next = 14;
+              _context2.next = 12;
               break;
             }
 
             throw new Error('Bad response (wrong content-type).');
 
-          case 14:
+          case 12:
             if (res.body) {
-              _context2.next = 16;
+              _context2.next = 14;
               break;
             }
 
             throw new Error('Bad response (no body).');
 
-          case 16:
-            network = res.headers['x-bcoin-network'];
-
-            if (!(network && network !== this.network.type)) {
-              _context2.next = 19;
-              break;
-            }
-
-            throw new Error('Bad response (wrong network).');
-
-          case 19:
+          case 14:
             if (!res.body.error) {
-              _context2.next = 21;
+              _context2.next = 16;
               break;
             }
 
             throw new Error(res.body.error.message);
+
+          case 16:
+            if (!(res.statusCode !== 200)) {
+              _context2.next = 18;
+              break;
+            }
+
+            throw new Error('Status code: ' + res.statusCode + '.');
+
+          case 18:
+            network = res.headers['x-bcoin-network'];
+
+            if (!(network && network !== this.network.type)) {
+              _context2.next = 21;
+              break;
+            }
+
+            throw new Error('Bad response (wrong network).');
 
           case 21:
             return _context2.abrupt('return', res.body);
@@ -743,8 +743,8 @@ HTTPClient.prototype.getWalletBlock = function getWalletBlock(id, height) {
  * @returns {Promise}
  */
 
-HTTPClient.prototype.getWalletCoin = function getWalletCoin(id, account, hash, index) {
-  return this._get('/wallet/' + id + '/coin/' + hash + '/' + index, { account: account });
+HTTPClient.prototype.getWalletCoin = function getWalletCoin(id, hash, index) {
+  return this._get('/wallet/' + id + '/coin/' + hash + '/' + index);
 };
 
 /**
@@ -815,7 +815,7 @@ HTTPClient.prototype.retoken = function () {
  */
 
 HTTPClient.prototype.setPassphrase = function setPassphrase(id, old, new_) {
-  var body = { old: old, passphrase: new_ };
+  var body = { old: old, new: new_ };
   return this._post('/wallet/' + id + '/passphrase', body);
 };
 
@@ -926,8 +926,8 @@ HTTPClient.prototype.removeSharedKey = function removeSharedKey(id, account, key
  * @returns {Promise}
  */
 
-HTTPClient.prototype.importPrivate = function importPrivate(id, account, key) {
-  var body = { account: account, privateKey: key };
+HTTPClient.prototype.importPrivate = function importPrivate(id, account, key, passphrase) {
+  var body = { account: account, privateKey: key, passphrase: passphrase };
   return this._post('/wallet/' + id + '/import', body);
 };
 
@@ -965,7 +965,7 @@ HTTPClient.prototype.importAddress = function importAddress(id, account, address
  */
 
 HTTPClient.prototype.lockCoin = function lockCoin(id, hash, index) {
-  return this._put('/wallet/' + id + '/coin/locked', { hash: hash, index: index });
+  return this._put('/wallet/' + id + '/locked/' + hash + '/' + index, {});
 };
 
 /**
@@ -977,7 +977,7 @@ HTTPClient.prototype.lockCoin = function lockCoin(id, hash, index) {
  */
 
 HTTPClient.prototype.unlockCoin = function unlockCoin(id, hash, index) {
-  return this._del('/wallet/' + id + '/coin/locked', { hash: hash, index: index });
+  return this._del('/wallet/' + id + '/locked/' + hash + '/' + index, {});
 };
 
 /**
@@ -987,7 +987,7 @@ HTTPClient.prototype.unlockCoin = function unlockCoin(id, hash, index) {
  */
 
 HTTPClient.prototype.getLocked = function getLocked(id) {
-  return this._get('/wallet/' + id + '/coin/locked');
+  return this._get('/wallet/' + id + '/locked');
 };
 
 /**

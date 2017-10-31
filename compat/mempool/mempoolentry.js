@@ -48,6 +48,7 @@ function MempoolEntry(options) {
   this.deltaFee = 0;
   this.time = 0;
   this.value = 0;
+  this.coinbase = false;
   this.dependencies = false;
   this.descFee = 0;
   this.descSize = 0;
@@ -71,6 +72,7 @@ MempoolEntry.prototype.fromOptions = function fromOptions(options) {
   this.deltaFee = options.deltaFee;
   this.time = options.time;
   this.value = options.value;
+  this.coinbase = options.coinbase;
   this.dependencies = options.dependencies;
   this.descFee = options.descFee;
   this.descSize = options.descSize;
@@ -103,6 +105,8 @@ MempoolEntry.prototype.fromTX = function fromTX(tx, view, height) {
   var fee = tx.getFee(view);
 
   var dependencies = false;
+  var coinbase = false;
+
   var _iteratorNormalCompletion = true;
   var _didIteratorError = false;
   var _iteratorError = undefined;
@@ -112,10 +116,9 @@ MempoolEntry.prototype.fromTX = function fromTX(tx, view, height) {
       var _ref = _step.value;
       var prevout = _ref.prevout;
 
-      if (view.getHeight(prevout) === -1) {
-        dependencies = true;
-        break;
-      }
+      if (view.isCoinbase(prevout)) coinbase = true;
+
+      if (view.getHeight(prevout) === -1) dependencies = true;
     }
   } catch (err) {
     _didIteratorError = true;
@@ -141,6 +144,7 @@ MempoolEntry.prototype.fromTX = function fromTX(tx, view, height) {
   this.deltaFee = fee;
   this.time = util.now();
   this.value = value;
+  this.coinbase = coinbase;
   this.dependencies = dependencies;
   this.descFee = fee;
   this.descSize = size;
@@ -254,6 +258,7 @@ MempoolEntry.prototype.memUsage = function memUsage() {
   var total = 0;
 
   total += 176; // mempool entry
+  total += 48; // coinbase
   total += 48; // dependencies
 
   total += 208; // tx
@@ -404,7 +409,7 @@ MempoolEntry.prototype.isFree = function isFree(height) {
  */
 
 MempoolEntry.prototype.getSize = function getSize() {
-  return this.tx.getSize() + 41;
+  return this.tx.getSize() + 42;
 };
 
 /**
@@ -422,6 +427,7 @@ MempoolEntry.prototype.toRaw = function toRaw() {
   bw.writeU64(this.fee);
   bw.writeU32(this.time);
   bw.writeU64(this.value);
+  bw.writeU8(this.coinbase ? 1 : 0);
   bw.writeU8(this.dependencies ? 1 : 0);
   return bw.render();
 };
@@ -444,6 +450,7 @@ MempoolEntry.prototype.fromRaw = function fromRaw(data) {
   this.deltaFee = this.fee;
   this.time = br.readU32();
   this.value = br.readU64();
+  this.coinbase = br.readU8() === 1;
   this.dependencies = br.readU8() === 1;
   this.descFee = this.fee;
   this.descSize = this.size;

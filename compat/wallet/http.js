@@ -280,6 +280,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
               return _this2.walletdb.resend();
 
             case 2:
+
               res.send(200, { success: true });
 
             case 3:
@@ -705,7 +706,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
   // Import key
   this.post('/:id/import', function () {
     var _ref15 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee15(req, res) {
-      var valid, acct, pub, priv, b58, key, _key, addr;
+      var valid, acct, passphrase, pub, priv, b58, key, _key, addr;
 
       return _regenerator2.default.wrap(function _callee15$(_context15) {
         while (1) {
@@ -713,56 +714,57 @@ HTTPServer.prototype.initRouter = function initRouter() {
             case 0:
               valid = req.valid();
               acct = valid.str('account');
+              passphrase = valid.str('passphrase');
               pub = valid.buf('publicKey');
               priv = valid.str('privateKey');
               b58 = valid.str('address');
 
               if (!pub) {
-                _context15.next = 11;
+                _context15.next = 12;
                 break;
               }
 
               key = KeyRing.fromPublic(pub, _this2.network);
-              _context15.next = 9;
+              _context15.next = 10;
               return req.wallet.importKey(acct, key);
 
-            case 9:
+            case 10:
               res.send(200, { success: true });
               return _context15.abrupt('return');
 
-            case 11:
+            case 12:
               if (!priv) {
-                _context15.next = 17;
+                _context15.next = 18;
                 break;
               }
 
               _key = KeyRing.fromSecret(priv, _this2.network);
-              _context15.next = 15;
-              return req.wallet.importKey(acct, _key);
+              _context15.next = 16;
+              return req.wallet.importKey(acct, _key, passphrase);
 
-            case 15:
+            case 16:
               res.send(200, { success: true });
               return _context15.abrupt('return');
 
-            case 17:
+            case 18:
               if (!b58) {
-                _context15.next = 23;
+                _context15.next = 24;
                 break;
               }
 
               addr = Address.fromString(b58, _this2.network);
-              _context15.next = 21;
+              _context15.next = 22;
               return req.wallet.importAddress(acct, addr);
 
-            case 21:
+            case 22:
               res.send(200, { success: true });
               return _context15.abrupt('return');
 
-            case 23:
+            case 24:
 
               enforce(false, 'Key or address is required.');
 
-            case 24:
+            case 25:
             case 'end':
               return _context15.stop();
           }
@@ -820,7 +822,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
             case 0:
               valid = req.valid();
               passphrase = valid.str('passphrase');
-              outputs = valid.array('outputs');
+              outputs = valid.array('outputs', []);
               options = {
                 rate: valid.u64('rate'),
                 blocks: valid.u32('blocks'),
@@ -926,7 +928,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
             case 0:
               valid = req.valid();
               passphrase = valid.str('passphrase');
-              outputs = valid.array('outputs');
+              outputs = valid.array('outputs', []);
               options = {
                 rate: valid.u64('rate'),
                 maxFee: valid.u64('maxFee'),
@@ -1587,7 +1589,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
         while (1) {
           switch (_context33.prev = _context33.next) {
             case 0:
-              locked = _this2.wallet.getLocked();
+              locked = req.wallet.getLocked();
               result = [];
               _iteratorNormalCompletion4 = true;
               _didIteratorError4 = false;
@@ -1667,9 +1669,11 @@ HTTPServer.prototype.initRouter = function initRouter() {
               outpoint = new Outpoint(hash, index);
 
 
-              _this2.wallet.lockCoin(outpoint);
+              req.wallet.lockCoin(outpoint);
 
-            case 7:
+              res.send(200, { success: true });
+
+            case 8:
             case 'end':
               return _context34.stop();
           }
@@ -1701,9 +1705,11 @@ HTTPServer.prototype.initRouter = function initRouter() {
               outpoint = new Outpoint(hash, index);
 
 
-              _this2.wallet.unlockCoin(outpoint);
+              req.wallet.unlockCoin(outpoint);
 
-            case 7:
+              res.send(200, { success: true });
+
+            case 8:
             case 'end':
               return _context35.stop();
           }
@@ -2277,7 +2283,7 @@ HTTPServer.prototype.handleSocket = function handleSocket(socket) {
 
     socket.auth = true;
 
-    _this4.logger.info('Successful auth from %s.', socket.host);
+    _this4.logger.info('Successful auth from %s.', socket.remoteAddress);
 
     _this4.handleAuth(socket);
 

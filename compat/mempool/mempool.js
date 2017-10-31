@@ -44,6 +44,7 @@ var assert = require('assert');
 var path = require('path');
 var AsyncObject = require('../utils/asyncobject');
 var common = require('../blockchain/common');
+var consensus = require('../protocol/consensus');
 var policy = require('../protocol/policy');
 var util = require('../utils/util');
 var random = require('../crypto/random');
@@ -65,7 +66,6 @@ var layout = require('./layout');
 var LDB = require('../db/ldb');
 var Fees = require('./fees');
 var CoinView = require('../coins/coinview');
-var Coins = require('../coins/coins');
 var Heap = require('../utils/heap');
 
 /**
@@ -433,7 +433,7 @@ Mempool.prototype._addBlock = function () {
 
           case 5:
             if (!(i >= 1)) {
-              _context4.next = 20;
+              _context4.next = 22;
               break;
             }
 
@@ -442,16 +442,25 @@ Mempool.prototype._addBlock = function () {
             entry = this.getEntry(hash);
 
             if (entry) {
-              _context4.next = 14;
+              _context4.next = 16;
               break;
             }
 
             this.removeOrphan(hash);
-            this.resolveOrphans(tx);
             this.removeDoubleSpends(tx);
-            return _context4.abrupt('continue', 17);
 
-          case 14:
+            if (!this.waiting.has(hash)) {
+              _context4.next = 15;
+              break;
+            }
+
+            _context4.next = 15;
+            return this.handleOrphans(tx);
+
+          case 15:
+            return _context4.abrupt('continue', 19);
+
+          case 16:
 
             this.removeEntry(entry);
 
@@ -459,12 +468,12 @@ Mempool.prototype._addBlock = function () {
 
             entries.push(entry);
 
-          case 17:
+          case 19:
             i--;
             _context4.next = 5;
             break;
 
-          case 20:
+          case 22:
 
             // We need to reset the rejects filter periodically.
             // There may be a locktime in a TX that is now valid.
@@ -477,25 +486,25 @@ Mempool.prototype._addBlock = function () {
 
             this.cache.sync(block.hash);
 
-            _context4.next = 25;
+            _context4.next = 27;
             return this.cache.flush();
 
-          case 25:
+          case 27:
 
             this.tip = block.hash;
 
             if (!(entries.length === 0)) {
-              _context4.next = 28;
+              _context4.next = 30;
               break;
             }
 
             return _context4.abrupt('return');
 
-          case 28:
+          case 30:
 
             this.logger.debug('Removed %d txs from mempool for block %d.', entries.length, block.height);
 
-          case 29:
+          case 31:
           case 'end':
             return _context4.stop();
         }
@@ -670,46 +679,295 @@ Mempool.prototype._removeBlock = function () {
 }();
 
 /**
+ * Sanitize the mempool after a reorg.
+ * @private
+ * @returns {Promise}
+ */
+
+Mempool.prototype._handleReorg = function () {
+  var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7() {
+    var height, mtp, remove, _iteratorNormalCompletion3, _didIteratorError3, _iteratorError3, _iterator3, _step3, _ref8, _ref9, hash, entry, tx, hasLocks, _iteratorNormalCompletion5, _didIteratorError5, _iteratorError5, _iterator5, _step5, _ref10, sequence, _iteratorNormalCompletion4, _didIteratorError4, _iteratorError4, _iterator4, _step4, _hash, _entry2;
+
+    return _regenerator2.default.wrap(function _callee7$(_context7) {
+      while (1) {
+        switch (_context7.prev = _context7.next) {
+          case 0:
+            height = this.chain.height + 1;
+            _context7.next = 3;
+            return this.chain.getMedianTime(this.chain.tip);
+
+          case 3:
+            mtp = _context7.sent;
+            remove = [];
+            _iteratorNormalCompletion3 = true;
+            _didIteratorError3 = false;
+            _iteratorError3 = undefined;
+            _context7.prev = 8;
+            _iterator3 = (0, _getIterator3.default)(this.map);
+
+          case 10:
+            if (_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done) {
+              _context7.next = 56;
+              break;
+            }
+
+            _ref8 = _step3.value;
+            _ref9 = (0, _slicedToArray3.default)(_ref8, 2);
+            hash = _ref9[0];
+            entry = _ref9[1];
+            tx = entry.tx;
+
+            if (tx.isFinal(height, mtp)) {
+              _context7.next = 19;
+              break;
+            }
+
+            remove.push(hash);
+            return _context7.abrupt('continue', 53);
+
+          case 19:
+            if (!(tx.version > 1)) {
+              _context7.next = 52;
+              break;
+            }
+
+            hasLocks = false;
+            _iteratorNormalCompletion5 = true;
+            _didIteratorError5 = false;
+            _iteratorError5 = undefined;
+            _context7.prev = 24;
+            _iterator5 = (0, _getIterator3.default)(tx.inputs);
+
+          case 26:
+            if (_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done) {
+              _context7.next = 35;
+              break;
+            }
+
+            _ref10 = _step5.value;
+            sequence = _ref10.sequence;
+
+            if (sequence & consensus.SEQUENCE_DISABLE_FLAG) {
+              _context7.next = 32;
+              break;
+            }
+
+            hasLocks = true;
+            return _context7.abrupt('break', 35);
+
+          case 32:
+            _iteratorNormalCompletion5 = true;
+            _context7.next = 26;
+            break;
+
+          case 35:
+            _context7.next = 41;
+            break;
+
+          case 37:
+            _context7.prev = 37;
+            _context7.t0 = _context7['catch'](24);
+            _didIteratorError5 = true;
+            _iteratorError5 = _context7.t0;
+
+          case 41:
+            _context7.prev = 41;
+            _context7.prev = 42;
+
+            if (!_iteratorNormalCompletion5 && _iterator5.return) {
+              _iterator5.return();
+            }
+
+          case 44:
+            _context7.prev = 44;
+
+            if (!_didIteratorError5) {
+              _context7.next = 47;
+              break;
+            }
+
+            throw _iteratorError5;
+
+          case 47:
+            return _context7.finish(44);
+
+          case 48:
+            return _context7.finish(41);
+
+          case 49:
+            if (!hasLocks) {
+              _context7.next = 52;
+              break;
+            }
+
+            remove.push(hash);
+            return _context7.abrupt('continue', 53);
+
+          case 52:
+
+            if (entry.coinbase) remove.push(hash);
+
+          case 53:
+            _iteratorNormalCompletion3 = true;
+            _context7.next = 10;
+            break;
+
+          case 56:
+            _context7.next = 62;
+            break;
+
+          case 58:
+            _context7.prev = 58;
+            _context7.t1 = _context7['catch'](8);
+            _didIteratorError3 = true;
+            _iteratorError3 = _context7.t1;
+
+          case 62:
+            _context7.prev = 62;
+            _context7.prev = 63;
+
+            if (!_iteratorNormalCompletion3 && _iterator3.return) {
+              _iterator3.return();
+            }
+
+          case 65:
+            _context7.prev = 65;
+
+            if (!_didIteratorError3) {
+              _context7.next = 68;
+              break;
+            }
+
+            throw _iteratorError3;
+
+          case 68:
+            return _context7.finish(65);
+
+          case 69:
+            return _context7.finish(62);
+
+          case 70:
+            _iteratorNormalCompletion4 = true;
+            _didIteratorError4 = false;
+            _iteratorError4 = undefined;
+            _context7.prev = 73;
+            _iterator4 = (0, _getIterator3.default)(remove);
+
+          case 75:
+            if (_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done) {
+              _context7.next = 84;
+              break;
+            }
+
+            _hash = _step4.value;
+            _entry2 = this.getEntry(_hash);
+
+            if (_entry2) {
+              _context7.next = 80;
+              break;
+            }
+
+            return _context7.abrupt('continue', 81);
+
+          case 80:
+
+            this.evictEntry(_entry2);
+
+          case 81:
+            _iteratorNormalCompletion4 = true;
+            _context7.next = 75;
+            break;
+
+          case 84:
+            _context7.next = 90;
+            break;
+
+          case 86:
+            _context7.prev = 86;
+            _context7.t2 = _context7['catch'](73);
+            _didIteratorError4 = true;
+            _iteratorError4 = _context7.t2;
+
+          case 90:
+            _context7.prev = 90;
+            _context7.prev = 91;
+
+            if (!_iteratorNormalCompletion4 && _iterator4.return) {
+              _iterator4.return();
+            }
+
+          case 93:
+            _context7.prev = 93;
+
+            if (!_didIteratorError4) {
+              _context7.next = 96;
+              break;
+            }
+
+            throw _iteratorError4;
+
+          case 96:
+            return _context7.finish(93);
+
+          case 97:
+            return _context7.finish(90);
+
+          case 98:
+          case 'end':
+            return _context7.stop();
+        }
+      }
+    }, _callee7, this, [[8, 58, 62, 70], [24, 37, 41, 49], [42,, 44, 48], [63,, 65, 69], [73, 86, 90, 98], [91,, 93, 97]]);
+  }));
+
+  function _handleReorg() {
+    return _ref7.apply(this, arguments);
+  }
+
+  return _handleReorg;
+}();
+
+/**
  * Reset the mempool.
  * @method
  * @returns {Promise}
  */
 
 Mempool.prototype.reset = function () {
-  var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7() {
+  var _ref11 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8() {
     var unlock;
-    return _regenerator2.default.wrap(function _callee7$(_context7) {
+    return _regenerator2.default.wrap(function _callee8$(_context8) {
       while (1) {
-        switch (_context7.prev = _context7.next) {
+        switch (_context8.prev = _context8.next) {
           case 0:
-            _context7.next = 2;
+            _context8.next = 2;
             return this.locker.lock();
 
           case 2:
-            unlock = _context7.sent;
-            _context7.prev = 3;
-            _context7.next = 6;
+            unlock = _context8.sent;
+            _context8.prev = 3;
+            _context8.next = 6;
             return this._reset();
 
           case 6:
-            return _context7.abrupt('return', _context7.sent);
+            return _context8.abrupt('return', _context8.sent);
 
           case 7:
-            _context7.prev = 7;
+            _context8.prev = 7;
 
             unlock();
-            return _context7.finish(7);
+            return _context8.finish(7);
 
           case 10:
           case 'end':
-            return _context7.stop();
+            return _context8.stop();
         }
       }
-    }, _callee7, this, [[3,, 7, 10]]);
+    }, _callee8, this, [[3,, 7, 10]]);
   }));
 
   function reset() {
-    return _ref7.apply(this, arguments);
+    return _ref11.apply(this, arguments);
   }
 
   return reset;
@@ -721,10 +979,10 @@ Mempool.prototype.reset = function () {
  */
 
 Mempool.prototype._reset = function () {
-  var _ref8 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8() {
-    return _regenerator2.default.wrap(function _callee8$(_context8) {
+  var _ref12 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee9() {
+    return _regenerator2.default.wrap(function _callee9$(_context9) {
       while (1) {
-        switch (_context8.prev = _context8.next) {
+        switch (_context9.prev = _context9.next) {
           case 0:
             this.logger.info('Mempool reset (%d txs removed).', this.map.size);
 
@@ -745,11 +1003,11 @@ Mempool.prototype._reset = function () {
             this.rejects.reset();
 
             if (!this.options.persistent) {
-              _context8.next = 16;
+              _context9.next = 16;
               break;
             }
 
-            _context8.next = 15;
+            _context9.next = 15;
             return this.cache.wipe();
 
           case 15:
@@ -761,14 +1019,14 @@ Mempool.prototype._reset = function () {
 
           case 17:
           case 'end':
-            return _context8.stop();
+            return _context9.stop();
         }
       }
-    }, _callee8, this);
+    }, _callee9, this);
   }));
 
   function _reset() {
-    return _ref8.apply(this, arguments);
+    return _ref12.apply(this, arguments);
   }
 
   return _reset;
@@ -793,13 +1051,13 @@ Mempool.prototype.limitSize = function limitSize(added) {
   var start = util.hrtime();
   var queue = new Heap(cmpRate);
 
-  var _iteratorNormalCompletion3 = true;
-  var _didIteratorError3 = false;
-  var _iteratorError3 = undefined;
+  var _iteratorNormalCompletion6 = true;
+  var _didIteratorError6 = false;
+  var _iteratorError6 = undefined;
 
   try {
-    for (var _iterator3 = (0, _getIterator3.default)(this.map.values()), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-      var entry = _step3.value;
+    for (var _iterator6 = (0, _getIterator3.default)(this.map.values()), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+      var entry = _step6.value;
 
       if (this.hasDepends(entry.tx)) continue;
 
@@ -813,16 +1071,16 @@ Mempool.prototype.limitSize = function limitSize(added) {
       this.evictEntry(entry);
     }
   } catch (err) {
-    _didIteratorError3 = true;
-    _iteratorError3 = err;
+    _didIteratorError6 = true;
+    _iteratorError6 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion3 && _iterator3.return) {
-        _iterator3.return();
+      if (!_iteratorNormalCompletion6 && _iterator6.return) {
+        _iterator6.return();
       }
     } finally {
-      if (_didIteratorError3) {
-        throw _iteratorError3;
+      if (_didIteratorError6) {
+        throw _iteratorError6;
       }
     }
   }
@@ -836,14 +1094,14 @@ Mempool.prototype.limitSize = function limitSize(added) {
   this.logger.debug('(bench) Heap mempool queue size: %d.', queue.size());
 
   while (queue.size() > 0) {
-    var _entry2 = queue.shift();
-    var hash = _entry2.hash('hex');
+    var _entry3 = queue.shift();
+    var hash = _entry3.hash('hex');
 
     assert(this.hasEntry(hash));
 
-    this.logger.debug('Removing package %s from mempool (low fee).', _entry2.txid());
+    this.logger.debug('Removing package %s from mempool (low fee).', _entry3.txid());
 
-    this.evictEntry(_entry2);
+    this.evictEntry(_entry3);
 
     if (this.size <= threshold) break;
   }
@@ -950,53 +1208,53 @@ Mempool.prototype.getCoinsByAddress = function getCoinsByAddress(addrs) {
 
   var out = [];
 
-  var _iteratorNormalCompletion4 = true;
-  var _didIteratorError4 = false;
-  var _iteratorError4 = undefined;
+  var _iteratorNormalCompletion7 = true;
+  var _didIteratorError7 = false;
+  var _iteratorError7 = undefined;
 
   try {
-    for (var _iterator4 = (0, _getIterator3.default)(addrs), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-      var addr = _step4.value;
+    for (var _iterator7 = (0, _getIterator3.default)(addrs), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+      var addr = _step7.value;
 
       var hash = Address.getHash(addr, 'hex');
       var coins = this.coinIndex.get(hash);
 
-      var _iteratorNormalCompletion5 = true;
-      var _didIteratorError5 = false;
-      var _iteratorError5 = undefined;
+      var _iteratorNormalCompletion8 = true;
+      var _didIteratorError8 = false;
+      var _iteratorError8 = undefined;
 
       try {
-        for (var _iterator5 = (0, _getIterator3.default)(coins), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
-          var coin = _step5.value;
+        for (var _iterator8 = (0, _getIterator3.default)(coins), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+          var coin = _step8.value;
 
           out.push(coin);
         }
       } catch (err) {
-        _didIteratorError5 = true;
-        _iteratorError5 = err;
+        _didIteratorError8 = true;
+        _iteratorError8 = err;
       } finally {
         try {
-          if (!_iteratorNormalCompletion5 && _iterator5.return) {
-            _iterator5.return();
+          if (!_iteratorNormalCompletion8 && _iterator8.return) {
+            _iterator8.return();
           }
         } finally {
-          if (_didIteratorError5) {
-            throw _iteratorError5;
+          if (_didIteratorError8) {
+            throw _iteratorError8;
           }
         }
       }
     }
   } catch (err) {
-    _didIteratorError4 = true;
-    _iteratorError4 = err;
+    _didIteratorError7 = true;
+    _iteratorError7 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion4 && _iterator4.return) {
-        _iterator4.return();
+      if (!_iteratorNormalCompletion7 && _iterator7.return) {
+        _iterator7.return();
       }
     } finally {
-      if (_didIteratorError4) {
-        throw _iteratorError4;
+      if (_didIteratorError7) {
+        throw _iteratorError7;
       }
     }
   }
@@ -1015,53 +1273,53 @@ Mempool.prototype.getTXByAddress = function getTXByAddress(addrs) {
 
   var out = [];
 
-  var _iteratorNormalCompletion6 = true;
-  var _didIteratorError6 = false;
-  var _iteratorError6 = undefined;
+  var _iteratorNormalCompletion9 = true;
+  var _didIteratorError9 = false;
+  var _iteratorError9 = undefined;
 
   try {
-    for (var _iterator6 = (0, _getIterator3.default)(addrs), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
-      var addr = _step6.value;
+    for (var _iterator9 = (0, _getIterator3.default)(addrs), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
+      var addr = _step9.value;
 
       var hash = Address.getHash(addr, 'hex');
       var txs = this.txIndex.get(hash);
 
-      var _iteratorNormalCompletion7 = true;
-      var _didIteratorError7 = false;
-      var _iteratorError7 = undefined;
+      var _iteratorNormalCompletion10 = true;
+      var _didIteratorError10 = false;
+      var _iteratorError10 = undefined;
 
       try {
-        for (var _iterator7 = (0, _getIterator3.default)(txs), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-          var tx = _step7.value;
+        for (var _iterator10 = (0, _getIterator3.default)(txs), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
+          var tx = _step10.value;
 
           out.push(tx);
         }
       } catch (err) {
-        _didIteratorError7 = true;
-        _iteratorError7 = err;
+        _didIteratorError10 = true;
+        _iteratorError10 = err;
       } finally {
         try {
-          if (!_iteratorNormalCompletion7 && _iterator7.return) {
-            _iterator7.return();
+          if (!_iteratorNormalCompletion10 && _iterator10.return) {
+            _iterator10.return();
           }
         } finally {
-          if (_didIteratorError7) {
-            throw _iteratorError7;
+          if (_didIteratorError10) {
+            throw _iteratorError10;
           }
         }
       }
     }
   } catch (err) {
-    _didIteratorError6 = true;
-    _iteratorError6 = err;
+    _didIteratorError9 = true;
+    _iteratorError9 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion6 && _iterator6.return) {
-        _iterator6.return();
+      if (!_iteratorNormalCompletion9 && _iterator9.return) {
+        _iterator9.return();
       }
     } finally {
-      if (_didIteratorError6) {
-        throw _iteratorError6;
+      if (_didIteratorError9) {
+        throw _iteratorError9;
       }
     }
   }
@@ -1080,53 +1338,53 @@ Mempool.prototype.getMetaByAddress = function getMetaByAddress(addrs) {
 
   var out = [];
 
-  var _iteratorNormalCompletion8 = true;
-  var _didIteratorError8 = false;
-  var _iteratorError8 = undefined;
+  var _iteratorNormalCompletion11 = true;
+  var _didIteratorError11 = false;
+  var _iteratorError11 = undefined;
 
   try {
-    for (var _iterator8 = (0, _getIterator3.default)(addrs), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
-      var addr = _step8.value;
+    for (var _iterator11 = (0, _getIterator3.default)(addrs), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
+      var addr = _step11.value;
 
       var hash = Address.getHash(addr, 'hex');
       var txs = this.txIndex.getMeta(hash);
 
-      var _iteratorNormalCompletion9 = true;
-      var _didIteratorError9 = false;
-      var _iteratorError9 = undefined;
+      var _iteratorNormalCompletion12 = true;
+      var _didIteratorError12 = false;
+      var _iteratorError12 = undefined;
 
       try {
-        for (var _iterator9 = (0, _getIterator3.default)(txs), _step9; !(_iteratorNormalCompletion9 = (_step9 = _iterator9.next()).done); _iteratorNormalCompletion9 = true) {
-          var tx = _step9.value;
+        for (var _iterator12 = (0, _getIterator3.default)(txs), _step12; !(_iteratorNormalCompletion12 = (_step12 = _iterator12.next()).done); _iteratorNormalCompletion12 = true) {
+          var tx = _step12.value;
 
           out.push(tx);
         }
       } catch (err) {
-        _didIteratorError9 = true;
-        _iteratorError9 = err;
+        _didIteratorError12 = true;
+        _iteratorError12 = err;
       } finally {
         try {
-          if (!_iteratorNormalCompletion9 && _iterator9.return) {
-            _iterator9.return();
+          if (!_iteratorNormalCompletion12 && _iterator12.return) {
+            _iterator12.return();
           }
         } finally {
-          if (_didIteratorError9) {
-            throw _iteratorError9;
+          if (_didIteratorError12) {
+            throw _iteratorError12;
           }
         }
       }
     }
   } catch (err) {
-    _didIteratorError8 = true;
-    _iteratorError8 = err;
+    _didIteratorError11 = true;
+    _iteratorError11 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion8 && _iterator8.return) {
-        _iterator8.return();
+      if (!_iteratorNormalCompletion11 && _iterator11.return) {
+        _iterator11.return();
       }
     } finally {
-      if (_didIteratorError8) {
-        throw _iteratorError8;
+      if (_didIteratorError11) {
+        throw _iteratorError11;
       }
     }
   }
@@ -1214,41 +1472,41 @@ Mempool.prototype.hasReject = function hasReject(hash) {
  */
 
 Mempool.prototype.addTX = function () {
-  var _ref9 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee9(tx, id) {
+  var _ref13 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee10(tx, id) {
     var hash, unlock;
-    return _regenerator2.default.wrap(function _callee9$(_context9) {
+    return _regenerator2.default.wrap(function _callee10$(_context10) {
       while (1) {
-        switch (_context9.prev = _context9.next) {
+        switch (_context10.prev = _context10.next) {
           case 0:
             hash = tx.hash('hex');
-            _context9.next = 3;
+            _context10.next = 3;
             return this.locker.lock(hash);
 
           case 3:
-            unlock = _context9.sent;
-            _context9.prev = 4;
-            _context9.next = 7;
+            unlock = _context10.sent;
+            _context10.prev = 4;
+            _context10.next = 7;
             return this._addTX(tx, id);
 
           case 7:
-            return _context9.abrupt('return', _context9.sent);
+            return _context10.abrupt('return', _context10.sent);
 
           case 8:
-            _context9.prev = 8;
+            _context10.prev = 8;
 
             unlock();
-            return _context9.finish(8);
+            return _context10.finish(8);
 
           case 11:
           case 'end':
-            return _context9.stop();
+            return _context10.stop();
         }
       }
-    }, _callee9, this, [[4,, 8, 11]]);
+    }, _callee10, this, [[4,, 8, 11]]);
   }));
 
   function addTX(_x9, _x10) {
-    return _ref9.apply(this, arguments);
+    return _ref13.apply(this, arguments);
   }
 
   return addTX;
@@ -1264,58 +1522,58 @@ Mempool.prototype.addTX = function () {
  */
 
 Mempool.prototype._addTX = function () {
-  var _ref10 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee10(tx, id) {
+  var _ref14 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee11(tx, id) {
     var missing;
-    return _regenerator2.default.wrap(function _callee10$(_context10) {
+    return _regenerator2.default.wrap(function _callee11$(_context11) {
       while (1) {
-        switch (_context10.prev = _context10.next) {
+        switch (_context11.prev = _context11.next) {
           case 0:
             if (id == null) id = -1;
 
             missing = void 0;
-            _context10.prev = 2;
-            _context10.next = 5;
+            _context11.prev = 2;
+            _context11.next = 5;
             return this.insertTX(tx, id);
 
           case 5:
-            missing = _context10.sent;
-            _context10.next = 12;
+            missing = _context11.sent;
+            _context11.next = 12;
             break;
 
           case 8:
-            _context10.prev = 8;
-            _context10.t0 = _context10['catch'](2);
+            _context11.prev = 8;
+            _context11.t0 = _context11['catch'](2);
 
-            if (_context10.t0.type === 'VerifyError') {
-              if (!tx.hasWitness() && !_context10.t0.malleated) this.rejects.add(tx.hash());
+            if (_context11.t0.type === 'VerifyError') {
+              if (!tx.hasWitness() && !_context11.t0.malleated) this.rejects.add(tx.hash());
             }
-            throw _context10.t0;
+            throw _context11.t0;
 
           case 12:
             if (!(util.now() - this.lastFlush > 10)) {
-              _context10.next = 16;
+              _context11.next = 16;
               break;
             }
 
-            _context10.next = 15;
+            _context11.next = 15;
             return this.cache.flush();
 
           case 15:
             this.lastFlush = util.now();
 
           case 16:
-            return _context10.abrupt('return', missing);
+            return _context11.abrupt('return', missing);
 
           case 17:
           case 'end':
-            return _context10.stop();
+            return _context11.stop();
         }
       }
-    }, _callee10, this, [[2, 8]]);
+    }, _callee11, this, [[2, 8]]);
   }));
 
   function _addTX(_x11, _x12) {
-    return _ref10.apply(this, arguments);
+    return _ref14.apply(this, arguments);
   }
 
   return _addTX;
@@ -1331,12 +1589,12 @@ Mempool.prototype._addTX = function () {
  */
 
 Mempool.prototype.insertTX = function () {
-  var _ref11 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee11(tx, id) {
+  var _ref15 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee12(tx, id) {
     var lockFlags, height, hash, _tx$checkSanity, _tx$checkSanity2, valid, reason, score, _tx$checkStandard, _tx$checkStandard2, _valid, _reason, _score, view, missing, entry;
 
-    return _regenerator2.default.wrap(function _callee11$(_context11) {
+    return _regenerator2.default.wrap(function _callee12$(_context12) {
       while (1) {
-        switch (_context11.prev = _context11.next) {
+        switch (_context12.prev = _context12.next) {
           case 0:
             assert(!tx.mutable, 'Cannot add mutable TX to mempool.');
 
@@ -1351,7 +1609,7 @@ Mempool.prototype.insertTX = function () {
             _tx$checkSanity = tx.checkSanity(), _tx$checkSanity2 = (0, _slicedToArray3.default)(_tx$checkSanity, 3), valid = _tx$checkSanity2[0], reason = _tx$checkSanity2[1], score = _tx$checkSanity2[2];
 
             if (valid) {
-              _context11.next = 7;
+              _context12.next = 7;
               break;
             }
 
@@ -1359,7 +1617,7 @@ Mempool.prototype.insertTX = function () {
 
           case 7:
             if (!tx.isCoinbase()) {
-              _context11.next = 9;
+              _context12.next = 9;
               break;
             }
 
@@ -1367,12 +1625,12 @@ Mempool.prototype.insertTX = function () {
 
           case 9:
             if (!this.options.requireStandard) {
-              _context11.next = 12;
+              _context12.next = 12;
               break;
             }
 
             if (!(!this.chain.state.hasCSV() && tx.version >= 2)) {
-              _context11.next = 12;
+              _context12.next = 12;
               break;
             }
 
@@ -1380,12 +1638,12 @@ Mempool.prototype.insertTX = function () {
 
           case 12:
             if (!(!this.chain.state.hasWitness() && !this.options.prematureWitness)) {
-              _context11.next = 15;
+              _context12.next = 15;
               break;
             }
 
             if (!tx.hasWitness()) {
-              _context11.next = 15;
+              _context12.next = 15;
               break;
             }
 
@@ -1393,14 +1651,14 @@ Mempool.prototype.insertTX = function () {
 
           case 15:
             if (!this.options.requireStandard) {
-              _context11.next = 22;
+              _context12.next = 22;
               break;
             }
 
             _tx$checkStandard = tx.checkStandard(), _tx$checkStandard2 = (0, _slicedToArray3.default)(_tx$checkStandard, 3), _valid = _tx$checkStandard2[0], _reason = _tx$checkStandard2[1], _score = _tx$checkStandard2[2];
 
             if (_valid) {
-              _context11.next = 19;
+              _context12.next = 19;
               break;
             }
 
@@ -1408,24 +1666,24 @@ Mempool.prototype.insertTX = function () {
 
           case 19:
             if (this.options.replaceByFee) {
-              _context11.next = 22;
+              _context12.next = 22;
               break;
             }
 
             if (!tx.isRBF()) {
-              _context11.next = 22;
+              _context12.next = 22;
               break;
             }
 
             throw new VerifyError(tx, 'nonstandard', 'replace-by-fee', 0);
 
           case 22:
-            _context11.next = 24;
+            _context12.next = 24;
             return this.verifyFinal(tx, lockFlags);
 
           case 24:
-            if (_context11.sent) {
-              _context11.next = 26;
+            if (_context12.sent) {
+              _context12.next = 26;
               break;
             }
 
@@ -1433,19 +1691,19 @@ Mempool.prototype.insertTX = function () {
 
           case 26:
             if (!this.exists(hash)) {
-              _context11.next = 28;
+              _context12.next = 28;
               break;
             }
 
             throw new VerifyError(tx, 'alreadyknown', 'txn-already-in-mempool', 0);
 
           case 28:
-            _context11.next = 30;
+            _context12.next = 30;
             return this.chain.hasCoins(tx);
 
           case 30:
-            if (!_context11.sent) {
-              _context11.next = 32;
+            if (!_context12.sent) {
+              _context12.next = 32;
               break;
             }
 
@@ -1453,7 +1711,7 @@ Mempool.prototype.insertTX = function () {
 
           case 32:
             if (!this.isDoubleSpend(tx)) {
-              _context11.next = 35;
+              _context12.next = 35;
               break;
             }
 
@@ -1461,24 +1719,24 @@ Mempool.prototype.insertTX = function () {
             throw new VerifyError(tx, 'duplicate', 'bad-txns-inputs-spent', 0);
 
           case 35:
-            _context11.next = 37;
+            _context12.next = 37;
             return this.getCoinView(tx);
 
           case 37:
-            view = _context11.sent;
+            view = _context12.sent;
 
-
-            // Find missing outpoints.
-            missing = this.findMissing(tx, view);
 
             // Maybe store as an orphan.
+            missing = this.maybeOrphan(tx, view, id);
+
+            // Return missing outpoint hashes.
 
             if (!missing) {
-              _context11.next = 41;
+              _context12.next = 41;
               break;
             }
 
-            return _context11.abrupt('return', this.storeOrphan(tx, missing, id));
+            return _context12.abrupt('return', missing);
 
           case 41:
 
@@ -1488,34 +1746,34 @@ Mempool.prototype.insertTX = function () {
 
             // Contextual verification.
 
-            _context11.next = 44;
+            _context12.next = 44;
             return this.verify(entry, view);
 
           case 44:
-            _context11.next = 46;
+            _context12.next = 46;
             return this.addEntry(entry, view);
 
           case 46:
             if (!this.limitSize(hash)) {
-              _context11.next = 48;
+              _context12.next = 48;
               break;
             }
 
             throw new VerifyError(tx, 'insufficientfee', 'mempool full', 0);
 
           case 48:
-            return _context11.abrupt('return', null);
+            return _context12.abrupt('return', null);
 
           case 49:
           case 'end':
-            return _context11.stop();
+            return _context12.stop();
         }
       }
-    }, _callee11, this);
+    }, _callee12, this);
   }));
 
   function insertTX(_x13, _x14) {
-    return _ref11.apply(this, arguments);
+    return _ref15.apply(this, arguments);
   }
 
   return insertTX;
@@ -1530,12 +1788,12 @@ Mempool.prototype.insertTX = function () {
  */
 
 Mempool.prototype.verify = function () {
-  var _ref12 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee12(entry, view) {
+  var _ref16 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee13(entry, view) {
     var height, lockFlags, tx, minFee, now, _tx$checkInputs, _tx$checkInputs2, fee, reason, score, flags, _flags;
 
-    return _regenerator2.default.wrap(function _callee12$(_context12) {
+    return _regenerator2.default.wrap(function _callee13$(_context13) {
       while (1) {
-        switch (_context12.prev = _context12.next) {
+        switch (_context13.prev = _context13.next) {
           case 0:
             height = this.chain.height + 1;
             lockFlags = common.lockFlags.STANDARD_LOCKTIME_FLAGS;
@@ -1543,12 +1801,12 @@ Mempool.prototype.verify = function () {
 
             // Verify sequence locks.
 
-            _context12.next = 5;
+            _context13.next = 5;
             return this.verifyLocks(tx, view, lockFlags);
 
           case 5:
-            if (_context12.sent) {
-              _context12.next = 7;
+            if (_context13.sent) {
+              _context13.next = 7;
               break;
             }
 
@@ -1556,12 +1814,12 @@ Mempool.prototype.verify = function () {
 
           case 7:
             if (!this.options.requireStandard) {
-              _context12.next = 13;
+              _context13.next = 13;
               break;
             }
 
             if (tx.hasStandardInputs(view)) {
-              _context12.next = 10;
+              _context13.next = 10;
               break;
             }
 
@@ -1569,12 +1827,12 @@ Mempool.prototype.verify = function () {
 
           case 10:
             if (!this.chain.state.hasWitness()) {
-              _context12.next = 13;
+              _context13.next = 13;
               break;
             }
 
             if (tx.hasStandardWitness(view)) {
-              _context12.next = 13;
+              _context13.next = 13;
               break;
             }
 
@@ -1582,7 +1840,7 @@ Mempool.prototype.verify = function () {
 
           case 13:
             if (!(entry.sigops > policy.MAX_TX_SIGOPS_COST)) {
-              _context12.next = 15;
+              _context13.next = 15;
               break;
             }
 
@@ -1594,12 +1852,12 @@ Mempool.prototype.verify = function () {
             minFee = policy.getMinFee(entry.size, this.options.minRelay);
 
             if (!(this.options.relayPriority && entry.fee < minFee)) {
-              _context12.next = 19;
+              _context13.next = 19;
               break;
             }
 
             if (entry.isFree(height)) {
-              _context12.next = 19;
+              _context13.next = 19;
               break;
             }
 
@@ -1607,7 +1865,7 @@ Mempool.prototype.verify = function () {
 
           case 19:
             if (!(this.options.limitFree && entry.fee < minFee)) {
-              _context12.next = 26;
+              _context13.next = 26;
               break;
             }
 
@@ -1622,7 +1880,7 @@ Mempool.prototype.verify = function () {
             // At default rate it would take over a month to fill 1GB.
 
             if (!(this.freeCount > this.options.limitFreeRelay * 10 * 1000)) {
-              _context12.next = 25;
+              _context13.next = 25;
               break;
             }
 
@@ -1634,7 +1892,7 @@ Mempool.prototype.verify = function () {
 
           case 26:
             if (!(this.options.rejectAbsurdFees && entry.fee > minFee * 10000)) {
-              _context12.next = 28;
+              _context13.next = 28;
               break;
             }
 
@@ -1642,7 +1900,7 @@ Mempool.prototype.verify = function () {
 
           case 28:
             if (!(this.countAncestors(entry) + 1 > this.options.maxAncestors)) {
-              _context12.next = 30;
+              _context13.next = 30;
               break;
             }
 
@@ -1654,7 +1912,7 @@ Mempool.prototype.verify = function () {
             _tx$checkInputs = tx.checkInputs(view, height), _tx$checkInputs2 = (0, _slicedToArray3.default)(_tx$checkInputs, 3), fee = _tx$checkInputs2[0], reason = _tx$checkInputs2[1], score = _tx$checkInputs2[2];
 
             if (!(fee === -1)) {
-              _context12.next = 33;
+              _context13.next = 33;
               break;
             }
 
@@ -1664,24 +1922,24 @@ Mempool.prototype.verify = function () {
 
             // Script verification.
             flags = Script.flags.STANDARD_VERIFY_FLAGS;
-            _context12.prev = 34;
-            _context12.next = 37;
+            _context13.prev = 34;
+            _context13.next = 37;
             return this.verifyInputs(tx, view, flags);
 
           case 37:
-            _context12.next = 56;
+            _context13.next = 56;
             break;
 
           case 39:
-            _context12.prev = 39;
-            _context12.t0 = _context12['catch'](34);
+            _context13.prev = 39;
+            _context13.t0 = _context13['catch'](34);
 
             if (!tx.hasWitness()) {
-              _context12.next = 43;
+              _context13.next = 43;
               break;
             }
 
-            throw _context12.t0;
+            throw _context13.t0;
 
           case 43:
 
@@ -1691,16 +1949,16 @@ Mempool.prototype.verify = function () {
 
             // If it failed, the first verification
             // was the only result we needed.
-            _context12.next = 47;
+            _context13.next = 47;
             return this.verifyResult(tx, view, flags);
 
           case 47:
-            if (_context12.sent) {
-              _context12.next = 49;
+            if (_context13.sent) {
+              _context13.next = 49;
               break;
             }
 
-            throw _context12.t0;
+            throw _context13.t0;
 
           case 49:
 
@@ -1709,48 +1967,48 @@ Mempool.prototype.verify = function () {
             flags |= Script.flags.VERIFY_CLEANSTACK;
 
             // Cleanstack was causing the failure.
-            _context12.next = 52;
+            _context13.next = 52;
             return this.verifyResult(tx, view, flags);
 
           case 52:
-            if (!_context12.sent) {
-              _context12.next = 54;
+            if (!_context13.sent) {
+              _context13.next = 54;
               break;
             }
 
-            throw _context12.t0;
+            throw _context13.t0;
 
           case 54:
 
             // Do not insert into reject cache.
-            _context12.t0.malleated = true;
-            throw _context12.t0;
+            _context13.t0.malleated = true;
+            throw _context13.t0;
 
           case 56:
             if (!this.options.paranoidChecks) {
-              _context12.next = 63;
+              _context13.next = 63;
               break;
             }
 
             _flags = Script.flags.MANDATORY_VERIFY_FLAGS;
-            _context12.t1 = assert;
-            _context12.next = 61;
+            _context13.t1 = assert;
+            _context13.next = 61;
             return this.verifyResult(tx, view, _flags);
 
           case 61:
-            _context12.t2 = _context12.sent;
-            (0, _context12.t1)(_context12.t2, 'BUG: Verify failed for mandatory but not standard.');
+            _context13.t2 = _context13.sent;
+            (0, _context13.t1)(_context13.t2, 'BUG: Verify failed for mandatory but not standard.');
 
           case 63:
           case 'end':
-            return _context12.stop();
+            return _context13.stop();
         }
       }
-    }, _callee12, this, [[34, 39]]);
+    }, _callee13, this, [[34, 39]]);
   }));
 
   function verify(_x15, _x16) {
-    return _ref12.apply(this, arguments);
+    return _ref16.apply(this, arguments);
   }
 
   return verify;
@@ -1767,46 +2025,46 @@ Mempool.prototype.verify = function () {
  */
 
 Mempool.prototype.verifyResult = function () {
-  var _ref13 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee13(tx, view, flags) {
-    return _regenerator2.default.wrap(function _callee13$(_context13) {
+  var _ref17 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee14(tx, view, flags) {
+    return _regenerator2.default.wrap(function _callee14$(_context14) {
       while (1) {
-        switch (_context13.prev = _context13.next) {
+        switch (_context14.prev = _context14.next) {
           case 0:
-            _context13.prev = 0;
-            _context13.next = 3;
+            _context14.prev = 0;
+            _context14.next = 3;
             return this.verifyInputs(tx, view, flags);
 
           case 3:
-            _context13.next = 10;
+            _context14.next = 10;
             break;
 
           case 5:
-            _context13.prev = 5;
-            _context13.t0 = _context13['catch'](0);
+            _context14.prev = 5;
+            _context14.t0 = _context14['catch'](0);
 
-            if (!(_context13.t0.type === 'VerifyError')) {
-              _context13.next = 9;
+            if (!(_context14.t0.type === 'VerifyError')) {
+              _context14.next = 9;
               break;
             }
 
-            return _context13.abrupt('return', false);
+            return _context14.abrupt('return', false);
 
           case 9:
-            throw _context13.t0;
+            throw _context14.t0;
 
           case 10:
-            return _context13.abrupt('return', true);
+            return _context14.abrupt('return', true);
 
           case 11:
           case 'end':
-            return _context13.stop();
+            return _context14.stop();
         }
       }
-    }, _callee13, this, [[0, 5]]);
+    }, _callee14, this, [[0, 5]]);
   }));
 
   function verifyResult(_x17, _x18, _x19) {
-    return _ref13.apply(this, arguments);
+    return _ref17.apply(this, arguments);
   }
 
   return verifyResult;
@@ -1823,36 +2081,36 @@ Mempool.prototype.verifyResult = function () {
  */
 
 Mempool.prototype.verifyInputs = function () {
-  var _ref14 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee14(tx, view, flags) {
-    return _regenerator2.default.wrap(function _callee14$(_context14) {
+  var _ref18 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee15(tx, view, flags) {
+    return _regenerator2.default.wrap(function _callee15$(_context15) {
       while (1) {
-        switch (_context14.prev = _context14.next) {
+        switch (_context15.prev = _context15.next) {
           case 0:
-            _context14.next = 2;
+            _context15.next = 2;
             return tx.verifyAsync(view, flags, this.workers);
 
           case 2:
-            if (!_context14.sent) {
-              _context14.next = 4;
+            if (!_context15.sent) {
+              _context15.next = 4;
               break;
             }
 
-            return _context14.abrupt('return');
+            return _context15.abrupt('return');
 
           case 4:
             if (!(flags & Script.flags.ONLY_STANDARD_VERIFY_FLAGS)) {
-              _context14.next = 10;
+              _context15.next = 10;
               break;
             }
 
             flags &= ~Script.flags.ONLY_STANDARD_VERIFY_FLAGS;
 
-            _context14.next = 8;
+            _context15.next = 8;
             return tx.verifyAsync(view, flags, this.workers);
 
           case 8:
-            if (!_context14.sent) {
-              _context14.next = 10;
+            if (!_context15.sent) {
+              _context15.next = 10;
               break;
             }
 
@@ -1863,14 +2121,14 @@ Mempool.prototype.verifyInputs = function () {
 
           case 11:
           case 'end':
-            return _context14.stop();
+            return _context15.stop();
         }
       }
-    }, _callee14, this);
+    }, _callee15, this);
   }));
 
   function verifyInputs(_x20, _x21, _x22) {
-    return _ref14.apply(this, arguments);
+    return _ref18.apply(this, arguments);
   }
 
   return verifyInputs;
@@ -1889,11 +2147,11 @@ Mempool.prototype.verifyInputs = function () {
  */
 
 Mempool.prototype.addEntry = function () {
-  var _ref15 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee15(entry, view) {
+  var _ref19 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee16(entry, view) {
     var tx;
-    return _regenerator2.default.wrap(function _callee15$(_context15) {
+    return _regenerator2.default.wrap(function _callee16$(_context16) {
       while (1) {
-        switch (_context15.prev = _context15.next) {
+        switch (_context16.prev = _context16.next) {
           case 0:
             tx = entry.tx;
 
@@ -1911,19 +2169,19 @@ Mempool.prototype.addEntry = function () {
 
             this.cache.save(entry);
 
-            _context15.next = 10;
+            _context16.next = 10;
             return this.handleOrphans(tx);
 
           case 10:
           case 'end':
-            return _context15.stop();
+            return _context16.stop();
         }
       }
-    }, _callee15, this);
+    }, _callee16, this);
   }));
 
   function addEntry(_x23, _x24) {
-    return _ref15.apply(this, arguments);
+    return _ref19.apply(this, arguments);
   }
 
   return addEntry;
@@ -2018,15 +2276,16 @@ Mempool.prototype.updateAncestors = function updateAncestors(entry, map) {
 Mempool.prototype._countAncestors = function _countAncestors(entry, set, child, map) {
   var tx = entry.tx;
 
-  var _iteratorNormalCompletion10 = true;
-  var _didIteratorError10 = false;
-  var _iteratorError10 = undefined;
+  var _iteratorNormalCompletion13 = true;
+  var _didIteratorError13 = false;
+  var _iteratorError13 = undefined;
 
   try {
-    for (var _iterator10 = (0, _getIterator3.default)(tx.inputs), _step10; !(_iteratorNormalCompletion10 = (_step10 = _iterator10.next()).done); _iteratorNormalCompletion10 = true) {
-      var input = _step10.value;
+    for (var _iterator13 = (0, _getIterator3.default)(tx.inputs), _step13; !(_iteratorNormalCompletion13 = (_step13 = _iterator13.next()).done); _iteratorNormalCompletion13 = true) {
+      var _ref20 = _step13.value;
+      var prevout = _ref20.prevout;
 
-      var hash = input.prevout.hash;
+      var hash = prevout.hash;
       var parent = this.getEntry(hash);
 
       if (!parent) continue;
@@ -2044,16 +2303,16 @@ Mempool.prototype._countAncestors = function _countAncestors(entry, set, child, 
       if (set.size > this.options.maxAncestors) break;
     }
   } catch (err) {
-    _didIteratorError10 = true;
-    _iteratorError10 = err;
+    _didIteratorError13 = true;
+    _iteratorError13 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion10 && _iterator10.return) {
-        _iterator10.return();
+      if (!_iteratorNormalCompletion13 && _iterator13.return) {
+        _iterator13.return();
       }
     } finally {
-      if (_didIteratorError10) {
-        throw _iteratorError10;
+      if (_didIteratorError13) {
+        throw _iteratorError13;
       }
     }
   }
@@ -2124,15 +2383,16 @@ Mempool.prototype.getAncestors = function getAncestors(entry) {
 Mempool.prototype._getAncestors = function _getAncestors(entry, entries, set) {
   var tx = entry.tx;
 
-  var _iteratorNormalCompletion11 = true;
-  var _didIteratorError11 = false;
-  var _iteratorError11 = undefined;
+  var _iteratorNormalCompletion14 = true;
+  var _didIteratorError14 = false;
+  var _iteratorError14 = undefined;
 
   try {
-    for (var _iterator11 = (0, _getIterator3.default)(tx.inputs), _step11; !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
-      var input = _step11.value;
+    for (var _iterator14 = (0, _getIterator3.default)(tx.inputs), _step14; !(_iteratorNormalCompletion14 = (_step14 = _iterator14.next()).done); _iteratorNormalCompletion14 = true) {
+      var _ref21 = _step14.value;
+      var prevout = _ref21.prevout;
 
-      var hash = input.prevout.hash;
+      var hash = prevout.hash;
       var parent = this.getEntry(hash);
 
       if (!parent) continue;
@@ -2145,16 +2405,16 @@ Mempool.prototype._getAncestors = function _getAncestors(entry, entries, set) {
       this._getAncestors(parent, entries, set);
     }
   } catch (err) {
-    _didIteratorError11 = true;
-    _iteratorError11 = err;
+    _didIteratorError14 = true;
+    _iteratorError14 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion11 && _iterator11.return) {
-        _iterator11.return();
+      if (!_iteratorNormalCompletion14 && _iterator14.return) {
+        _iterator14.return();
       }
     } finally {
-      if (_didIteratorError11) {
-        throw _iteratorError11;
+      if (_didIteratorError14) {
+        throw _iteratorError14;
       }
     }
   }
@@ -2213,27 +2473,27 @@ Mempool.prototype.getDepends = function getDepends(tx) {
   var prevout = tx.getPrevout();
   var depends = [];
 
-  var _iteratorNormalCompletion12 = true;
-  var _didIteratorError12 = false;
-  var _iteratorError12 = undefined;
+  var _iteratorNormalCompletion15 = true;
+  var _didIteratorError15 = false;
+  var _iteratorError15 = undefined;
 
   try {
-    for (var _iterator12 = (0, _getIterator3.default)(prevout), _step12; !(_iteratorNormalCompletion12 = (_step12 = _iterator12.next()).done); _iteratorNormalCompletion12 = true) {
-      var hash = _step12.value;
+    for (var _iterator15 = (0, _getIterator3.default)(prevout), _step15; !(_iteratorNormalCompletion15 = (_step15 = _iterator15.next()).done); _iteratorNormalCompletion15 = true) {
+      var hash = _step15.value;
 
       if (this.hasEntry(hash)) depends.push(hash);
     }
   } catch (err) {
-    _didIteratorError12 = true;
-    _iteratorError12 = err;
+    _didIteratorError15 = true;
+    _iteratorError15 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion12 && _iterator12.return) {
-        _iterator12.return();
+      if (!_iteratorNormalCompletion15 && _iterator15.return) {
+        _iterator15.return();
       }
     } finally {
-      if (_didIteratorError12) {
-        throw _iteratorError12;
+      if (_didIteratorError15) {
+        throw _iteratorError15;
       }
     }
   }
@@ -2248,28 +2508,28 @@ Mempool.prototype.getDepends = function getDepends(tx) {
  */
 
 Mempool.prototype.hasDepends = function hasDepends(tx) {
-  var _iteratorNormalCompletion13 = true;
-  var _didIteratorError13 = false;
-  var _iteratorError13 = undefined;
+  var _iteratorNormalCompletion16 = true;
+  var _didIteratorError16 = false;
+  var _iteratorError16 = undefined;
 
   try {
-    for (var _iterator13 = (0, _getIterator3.default)(tx.inputs), _step13; !(_iteratorNormalCompletion13 = (_step13 = _iterator13.next()).done); _iteratorNormalCompletion13 = true) {
-      var input = _step13.value;
+    for (var _iterator16 = (0, _getIterator3.default)(tx.inputs), _step16; !(_iteratorNormalCompletion16 = (_step16 = _iterator16.next()).done); _iteratorNormalCompletion16 = true) {
+      var _ref22 = _step16.value;
+      var prevout = _ref22.prevout;
 
-      var hash = input.prevout.hash;
-      if (this.hasEntry(hash)) return true;
+      if (this.hasEntry(prevout.hash)) return true;
     }
   } catch (err) {
-    _didIteratorError13 = true;
-    _iteratorError13 = err;
+    _didIteratorError16 = true;
+    _iteratorError16 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion13 && _iterator13.return) {
-        _iterator13.return();
+      if (!_iteratorNormalCompletion16 && _iterator16.return) {
+        _iterator16.return();
       }
     } finally {
-      if (_didIteratorError13) {
-        throw _iteratorError13;
+      if (_didIteratorError16) {
+        throw _iteratorError16;
       }
     }
   }
@@ -2286,18 +2546,18 @@ Mempool.prototype.hasDepends = function hasDepends(tx) {
 Mempool.prototype.getBalance = function getBalance() {
   var total = 0;
 
-  var _iteratorNormalCompletion14 = true;
-  var _didIteratorError14 = false;
-  var _iteratorError14 = undefined;
+  var _iteratorNormalCompletion17 = true;
+  var _didIteratorError17 = false;
+  var _iteratorError17 = undefined;
 
   try {
-    for (var _iterator14 = (0, _getIterator3.default)(this.map), _step14; !(_iteratorNormalCompletion14 = (_step14 = _iterator14.next()).done); _iteratorNormalCompletion14 = true) {
-      var _ref16 = _step14.value;
+    for (var _iterator17 = (0, _getIterator3.default)(this.map), _step17; !(_iteratorNormalCompletion17 = (_step17 = _iterator17.next()).done); _iteratorNormalCompletion17 = true) {
+      var _ref23 = _step17.value;
 
-      var _ref17 = (0, _slicedToArray3.default)(_ref16, 2);
+      var _ref24 = (0, _slicedToArray3.default)(_ref23, 2);
 
-      var hash = _ref17[0];
-      var entry = _ref17[1];
+      var hash = _ref24[0];
+      var entry = _ref24[1];
 
       var tx = entry.tx;
       for (var i = 0; i < tx.outputs.length; i++) {
@@ -2306,16 +2566,16 @@ Mempool.prototype.getBalance = function getBalance() {
       }
     }
   } catch (err) {
-    _didIteratorError14 = true;
-    _iteratorError14 = err;
+    _didIteratorError17 = true;
+    _iteratorError17 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion14 && _iterator14.return) {
-        _iterator14.return();
+      if (!_iteratorNormalCompletion17 && _iterator17.return) {
+        _iterator17.return();
       }
     } finally {
-      if (_didIteratorError14) {
-        throw _iteratorError14;
+      if (_didIteratorError17) {
+        throw _iteratorError17;
       }
     }
   }
@@ -2331,27 +2591,27 @@ Mempool.prototype.getBalance = function getBalance() {
 Mempool.prototype.getHistory = function getHistory() {
   var txs = [];
 
-  var _iteratorNormalCompletion15 = true;
-  var _didIteratorError15 = false;
-  var _iteratorError15 = undefined;
+  var _iteratorNormalCompletion18 = true;
+  var _didIteratorError18 = false;
+  var _iteratorError18 = undefined;
 
   try {
-    for (var _iterator15 = (0, _getIterator3.default)(this.map.values()), _step15; !(_iteratorNormalCompletion15 = (_step15 = _iterator15.next()).done); _iteratorNormalCompletion15 = true) {
-      var entry = _step15.value;
+    for (var _iterator18 = (0, _getIterator3.default)(this.map.values()), _step18; !(_iteratorNormalCompletion18 = (_step18 = _iterator18.next()).done); _iteratorNormalCompletion18 = true) {
+      var entry = _step18.value;
 
       txs.push(entry.tx);
     }
   } catch (err) {
-    _didIteratorError15 = true;
-    _iteratorError15 = err;
+    _didIteratorError18 = true;
+    _iteratorError18 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion15 && _iterator15.return) {
-        _iterator15.return();
+      if (!_iteratorNormalCompletion18 && _iterator18.return) {
+        _iterator18.return();
       }
     } finally {
-      if (_didIteratorError15) {
-        throw _iteratorError15;
+      if (_didIteratorError18) {
+        throw _iteratorError18;
       }
     }
   }
@@ -2379,77 +2639,98 @@ Mempool.prototype.hasOrphan = function hasOrphan(hash) {
 };
 
 /**
- * Store an orphaned transaction.
+ * Maybe store an orphaned transaction.
  * @param {TX} tx
- * @param {Hash[]} missing
+ * @param {CoinView} view
  * @param {Number} id
  */
 
-Mempool.prototype.storeOrphan = function storeOrphan(tx, missing, id) {
+Mempool.prototype.maybeOrphan = function maybeOrphan(tx, view, id) {
+  var hashes = new _set2.default();
+  var missing = [];
+
+  var _iteratorNormalCompletion19 = true;
+  var _didIteratorError19 = false;
+  var _iteratorError19 = undefined;
+
+  try {
+    for (var _iterator19 = (0, _getIterator3.default)(tx.inputs), _step19; !(_iteratorNormalCompletion19 = (_step19 = _iterator19.next()).done); _iteratorNormalCompletion19 = true) {
+      var _ref25 = _step19.value;
+      var prevout = _ref25.prevout;
+
+      if (view.hasEntry(prevout)) continue;
+
+      if (this.hasReject(prevout.hash)) {
+        this.logger.debug('Not storing orphan %s (rejected parents).', tx.txid());
+        this.rejects.add(tx.hash());
+        return missing;
+      }
+
+      if (this.hasEntry(prevout.hash)) {
+        this.logger.debug('Not storing orphan %s (non-existent output).', tx.txid());
+        this.rejects.add(tx.hash());
+        return missing;
+      }
+
+      hashes.add(prevout.hash);
+    }
+
+    // Not an orphan.
+  } catch (err) {
+    _didIteratorError19 = true;
+    _iteratorError19 = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion19 && _iterator19.return) {
+        _iterator19.return();
+      }
+    } finally {
+      if (_didIteratorError19) {
+        throw _iteratorError19;
+      }
+    }
+  }
+
+  if (hashes.size === 0) return null;
+
+  // Weight limit for orphans.
   if (tx.getWeight() > policy.MAX_TX_WEIGHT) {
     this.logger.debug('Ignoring large orphan: %s', tx.txid());
     if (!tx.hasWitness()) this.rejects.add(tx.hash());
-    return [];
+    return missing;
   }
 
-  var _iteratorNormalCompletion16 = true;
-  var _didIteratorError16 = false;
-  var _iteratorError16 = undefined;
-
-  try {
-    for (var _iterator16 = (0, _getIterator3.default)(missing), _step16; !(_iteratorNormalCompletion16 = (_step16 = _iterator16.next()).done); _iteratorNormalCompletion16 = true) {
-      var prev = _step16.value;
-
-      if (this.hasReject(prev)) {
-        this.logger.debug('Not storing orphan %s (rejected parents).', tx.txid());
-        this.rejects.add(tx.hash());
-        return [];
-      }
-    }
-  } catch (err) {
-    _didIteratorError16 = true;
-    _iteratorError16 = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion16 && _iterator16.return) {
-        _iterator16.return();
-      }
-    } finally {
-      if (_didIteratorError16) {
-        throw _iteratorError16;
-      }
-    }
-  }
-
-  if (this.options.maxOrphans === 0) return [];
+  if (this.options.maxOrphans === 0) return missing;
 
   this.limitOrphans();
 
   var hash = tx.hash('hex');
 
-  var _iteratorNormalCompletion17 = true;
-  var _didIteratorError17 = false;
-  var _iteratorError17 = undefined;
+  var _iteratorNormalCompletion20 = true;
+  var _didIteratorError20 = false;
+  var _iteratorError20 = undefined;
 
   try {
-    for (var _iterator17 = (0, _getIterator3.default)(missing), _step17; !(_iteratorNormalCompletion17 = (_step17 = _iterator17.next()).done); _iteratorNormalCompletion17 = true) {
-      var _prev = _step17.value;
+    for (var _iterator20 = (0, _getIterator3.default)(hashes.keys()), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
+      var prev = _step20.value;
 
-      if (!this.waiting.has(_prev)) this.waiting.set(_prev, new _set2.default());
+      if (!this.waiting.has(prev)) this.waiting.set(prev, new _set2.default());
 
-      this.waiting.get(_prev).add(hash);
+      this.waiting.get(prev).add(hash);
+
+      missing.push(prev);
     }
   } catch (err) {
-    _didIteratorError17 = true;
-    _iteratorError17 = err;
+    _didIteratorError20 = true;
+    _iteratorError20 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion17 && _iterator17.return) {
-        _iterator17.return();
+      if (!_iteratorNormalCompletion20 && _iterator20.return) {
+        _iterator20.return();
       }
     } finally {
-      if (_didIteratorError17) {
-        throw _iteratorError17;
+      if (_didIteratorError20) {
+        throw _iteratorError20;
       }
     }
   }
@@ -2471,126 +2752,134 @@ Mempool.prototype.storeOrphan = function storeOrphan(tx, missing, id) {
  */
 
 Mempool.prototype.handleOrphans = function () {
-  var _ref18 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee16(parent) {
-    var resolved, _iteratorNormalCompletion18, _didIteratorError18, _iteratorError18, _iterator18, _step18, orphan, tx, missing;
+  var _ref26 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee17(parent) {
+    var resolved, _iteratorNormalCompletion21, _didIteratorError21, _iteratorError21, _iterator21, _step21, orphan, tx, missing;
 
-    return _regenerator2.default.wrap(function _callee16$(_context16) {
+    return _regenerator2.default.wrap(function _callee17$(_context17) {
       while (1) {
-        switch (_context16.prev = _context16.next) {
+        switch (_context17.prev = _context17.next) {
           case 0:
             resolved = this.resolveOrphans(parent);
-            _iteratorNormalCompletion18 = true;
-            _didIteratorError18 = false;
-            _iteratorError18 = undefined;
-            _context16.prev = 4;
-            _iterator18 = (0, _getIterator3.default)(resolved);
+            _iteratorNormalCompletion21 = true;
+            _didIteratorError21 = false;
+            _iteratorError21 = undefined;
+            _context17.prev = 4;
+            _iterator21 = (0, _getIterator3.default)(resolved);
 
           case 6:
-            if (_iteratorNormalCompletion18 = (_step18 = _iterator18.next()).done) {
-              _context16.next = 36;
+            if (_iteratorNormalCompletion21 = (_step21 = _iterator21.next()).done) {
+              _context17.next = 39;
               break;
             }
 
-            orphan = _step18.value;
+            orphan = _step21.value;
             tx = void 0, missing = void 0;
-            _context16.prev = 9;
+            _context17.prev = 9;
 
             tx = orphan.toTX();
-            _context16.next = 17;
+            _context17.next = 17;
             break;
 
           case 13:
-            _context16.prev = 13;
-            _context16.t0 = _context16['catch'](9);
+            _context17.prev = 13;
+            _context17.t0 = _context17['catch'](9);
 
             this.logger.warning('%s %s', 'Warning: possible memory corruption.', 'Orphan failed deserialization.');
-            return _context16.abrupt('continue', 33);
+            return _context17.abrupt('continue', 36);
 
           case 17:
-            _context16.prev = 17;
-            _context16.next = 20;
-            return this.insertTX(tx, -1);
+            _context17.prev = 17;
+            _context17.next = 20;
+            return this.insertTX(tx, orphan.id);
 
           case 20:
-            missing = _context16.sent;
-            _context16.next = 31;
+            missing = _context17.sent;
+            _context17.next = 31;
             break;
 
           case 23:
-            _context16.prev = 23;
-            _context16.t1 = _context16['catch'](17);
+            _context17.prev = 23;
+            _context17.t1 = _context17['catch'](17);
 
-            if (!(_context16.t1.type === 'VerifyError')) {
-              _context16.next = 30;
+            if (!(_context17.t1.type === 'VerifyError')) {
+              _context17.next = 30;
               break;
             }
 
-            this.logger.debug('Could not resolve orphan %s: %s.', tx.txid(), _context16.t1.message);
+            this.logger.debug('Could not resolve orphan %s: %s.', tx.txid(), _context17.t1.message);
 
-            if (!tx.hasWitness() && !_context16.t1.malleated) this.rejects.add(tx.hash());
+            if (!tx.hasWitness() && !_context17.t1.malleated) this.rejects.add(tx.hash());
 
-            this.emit('bad orphan', _context16.t1, orphan.id);
+            this.emit('bad orphan', _context17.t1, orphan.id);
 
-            return _context16.abrupt('continue', 33);
+            return _context17.abrupt('continue', 36);
 
           case 30:
-            throw _context16.t1;
+            throw _context17.t1;
 
           case 31:
+            if (!(missing && missing.length > 0)) {
+              _context17.next = 35;
+              break;
+            }
 
-            assert(!missing);
+            this.logger.debug('Transaction %s was double-orphaned in mempool.', tx.txid());
+            this.removeOrphan(tx.hash('hex'));
+            return _context17.abrupt('continue', 36);
+
+          case 35:
 
             this.logger.debug('Resolved orphan %s in mempool.', tx.txid());
 
-          case 33:
-            _iteratorNormalCompletion18 = true;
-            _context16.next = 6;
-            break;
-
           case 36:
-            _context16.next = 42;
+            _iteratorNormalCompletion21 = true;
+            _context17.next = 6;
             break;
 
-          case 38:
-            _context16.prev = 38;
-            _context16.t2 = _context16['catch'](4);
-            _didIteratorError18 = true;
-            _iteratorError18 = _context16.t2;
+          case 39:
+            _context17.next = 45;
+            break;
 
-          case 42:
-            _context16.prev = 42;
-            _context16.prev = 43;
-
-            if (!_iteratorNormalCompletion18 && _iterator18.return) {
-              _iterator18.return();
-            }
+          case 41:
+            _context17.prev = 41;
+            _context17.t2 = _context17['catch'](4);
+            _didIteratorError21 = true;
+            _iteratorError21 = _context17.t2;
 
           case 45:
-            _context16.prev = 45;
+            _context17.prev = 45;
+            _context17.prev = 46;
 
-            if (!_didIteratorError18) {
-              _context16.next = 48;
+            if (!_iteratorNormalCompletion21 && _iterator21.return) {
+              _iterator21.return();
+            }
+
+          case 48:
+            _context17.prev = 48;
+
+            if (!_didIteratorError21) {
+              _context17.next = 51;
               break;
             }
 
-            throw _iteratorError18;
+            throw _iteratorError21;
 
-          case 48:
-            return _context16.finish(45);
+          case 51:
+            return _context17.finish(48);
 
-          case 49:
-            return _context16.finish(42);
+          case 52:
+            return _context17.finish(45);
 
-          case 50:
+          case 53:
           case 'end':
-            return _context16.stop();
+            return _context17.stop();
         }
       }
-    }, _callee16, this, [[4, 38, 42, 50], [9, 13], [17, 23], [43,, 45, 49]]);
+    }, _callee17, this, [[4, 41, 45, 53], [9, 13], [17, 23], [46,, 48, 52]]);
   }));
 
   function handleOrphans(_x25) {
-    return _ref18.apply(this, arguments);
+    return _ref26.apply(this, arguments);
   }
 
   return handleOrphans;
@@ -2615,34 +2904,34 @@ Mempool.prototype.resolveOrphans = function resolveOrphans(parent) {
 
   var resolved = [];
 
-  var _iteratorNormalCompletion19 = true;
-  var _didIteratorError19 = false;
-  var _iteratorError19 = undefined;
+  var _iteratorNormalCompletion22 = true;
+  var _didIteratorError22 = false;
+  var _iteratorError22 = undefined;
 
   try {
-    for (var _iterator19 = (0, _getIterator3.default)(set.keys()), _step19; !(_iteratorNormalCompletion19 = (_step19 = _iterator19.next()).done); _iteratorNormalCompletion19 = true) {
-      var orphanHash = _step19.value;
+    for (var _iterator22 = (0, _getIterator3.default)(set.keys()), _step22; !(_iteratorNormalCompletion22 = (_step22 = _iterator22.next()).done); _iteratorNormalCompletion22 = true) {
+      var _hash2 = _step22.value;
 
-      var orphan = this.getOrphan(orphanHash);
+      var orphan = this.getOrphan(_hash2);
 
       assert(orphan);
 
       if (--orphan.missing === 0) {
-        this.orphans.delete(orphanHash);
+        this.orphans.delete(_hash2);
         resolved.push(orphan);
       }
     }
   } catch (err) {
-    _didIteratorError19 = true;
-    _iteratorError19 = err;
+    _didIteratorError22 = true;
+    _iteratorError22 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion19 && _iterator19.return) {
-        _iterator19.return();
+      if (!_iteratorNormalCompletion22 && _iterator22.return) {
+        _iterator22.return();
       }
     } finally {
-      if (_didIteratorError19) {
-        throw _iteratorError19;
+      if (_didIteratorError22) {
+        throw _iteratorError22;
       }
     }
   }
@@ -2672,13 +2961,13 @@ Mempool.prototype.removeOrphan = function removeOrphan(hash) {
     return false;
   }
 
-  var _iteratorNormalCompletion20 = true;
-  var _didIteratorError20 = false;
-  var _iteratorError20 = undefined;
+  var _iteratorNormalCompletion23 = true;
+  var _didIteratorError23 = false;
+  var _iteratorError23 = undefined;
 
   try {
-    for (var _iterator20 = (0, _getIterator3.default)(tx.getPrevout()), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
-      var prev = _step20.value;
+    for (var _iterator23 = (0, _getIterator3.default)(tx.getPrevout()), _step23; !(_iteratorNormalCompletion23 = (_step23 = _iterator23.next()).done); _iteratorNormalCompletion23 = true) {
+      var prev = _step23.value;
 
       var set = this.waiting.get(prev);
 
@@ -2691,16 +2980,16 @@ Mempool.prototype.removeOrphan = function removeOrphan(hash) {
       if (set.size === 0) this.waiting.delete(prev);
     }
   } catch (err) {
-    _didIteratorError20 = true;
-    _iteratorError20 = err;
+    _didIteratorError23 = true;
+    _iteratorError23 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion20 && _iterator20.return) {
-        _iterator20.return();
+      if (!_iteratorNormalCompletion23 && _iterator23.return) {
+        _iterator23.return();
       }
     } finally {
-      if (_didIteratorError20) {
-        throw _iteratorError20;
+      if (_didIteratorError23) {
+        throw _iteratorError23;
       }
     }
   }
@@ -2723,28 +3012,28 @@ Mempool.prototype.limitOrphans = function limitOrphans() {
   var index = random.randomRange(0, this.orphans.size);
 
   var hash = void 0;
-  var _iteratorNormalCompletion21 = true;
-  var _didIteratorError21 = false;
-  var _iteratorError21 = undefined;
+  var _iteratorNormalCompletion24 = true;
+  var _didIteratorError24 = false;
+  var _iteratorError24 = undefined;
 
   try {
-    for (var _iterator21 = (0, _getIterator3.default)(this.orphans.keys()), _step21; !(_iteratorNormalCompletion21 = (_step21 = _iterator21.next()).done); _iteratorNormalCompletion21 = true) {
-      hash = _step21.value;
+    for (var _iterator24 = (0, _getIterator3.default)(this.orphans.keys()), _step24; !(_iteratorNormalCompletion24 = (_step24 = _iterator24.next()).done); _iteratorNormalCompletion24 = true) {
+      hash = _step24.value;
 
       if (index === 0) break;
       index--;
     }
   } catch (err) {
-    _didIteratorError21 = true;
-    _iteratorError21 = err;
+    _didIteratorError24 = true;
+    _iteratorError24 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion21 && _iterator21.return) {
-        _iterator21.return();
+      if (!_iteratorNormalCompletion24 && _iterator24.return) {
+        _iterator24.return();
       }
     } finally {
-      if (_didIteratorError21) {
-        throw _iteratorError21;
+      if (_didIteratorError24) {
+        throw _iteratorError24;
       }
     }
   }
@@ -2769,28 +3058,30 @@ Mempool.prototype.limitOrphans = function limitOrphans() {
  */
 
 Mempool.prototype.isDoubleSpend = function isDoubleSpend(tx) {
-  var _iteratorNormalCompletion22 = true;
-  var _didIteratorError22 = false;
-  var _iteratorError22 = undefined;
+  var _iteratorNormalCompletion25 = true;
+  var _didIteratorError25 = false;
+  var _iteratorError25 = undefined;
 
   try {
-    for (var _iterator22 = (0, _getIterator3.default)(tx.inputs), _step22; !(_iteratorNormalCompletion22 = (_step22 = _iterator22.next()).done); _iteratorNormalCompletion22 = true) {
-      var input = _step22.value;
+    for (var _iterator25 = (0, _getIterator3.default)(tx.inputs), _step25; !(_iteratorNormalCompletion25 = (_step25 = _iterator25.next()).done); _iteratorNormalCompletion25 = true) {
+      var _ref27 = _step25.value;
+      var prevout = _ref27.prevout;
+      var hash = prevout.hash,
+          index = prevout.index;
 
-      var prevout = input.prevout;
-      if (this.isSpent(prevout.hash, prevout.index)) return true;
+      if (this.isSpent(hash, index)) return true;
     }
   } catch (err) {
-    _didIteratorError22 = true;
-    _iteratorError22 = err;
+    _didIteratorError25 = true;
+    _iteratorError25 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion22 && _iterator22.return) {
-        _iterator22.return();
+      if (!_iteratorNormalCompletion25 && _iterator25.return) {
+        _iterator25.return();
       }
     } finally {
-      if (_didIteratorError22) {
-        throw _iteratorError22;
+      if (_didIteratorError25) {
+        throw _iteratorError25;
       }
     }
   }
@@ -2806,40 +3097,40 @@ Mempool.prototype.isDoubleSpend = function isDoubleSpend(tx) {
  */
 
 Mempool.prototype.getSpentView = function () {
-  var _ref19 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee17(tx) {
+  var _ref28 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee18(tx) {
     var unlock;
-    return _regenerator2.default.wrap(function _callee17$(_context17) {
+    return _regenerator2.default.wrap(function _callee18$(_context18) {
       while (1) {
-        switch (_context17.prev = _context17.next) {
+        switch (_context18.prev = _context18.next) {
           case 0:
-            _context17.next = 2;
+            _context18.next = 2;
             return this.locker.lock();
 
           case 2:
-            unlock = _context17.sent;
-            _context17.prev = 3;
-            _context17.next = 6;
+            unlock = _context18.sent;
+            _context18.prev = 3;
+            _context18.next = 6;
             return this.getCoinView(tx);
 
           case 6:
-            return _context17.abrupt('return', _context17.sent);
+            return _context18.abrupt('return', _context18.sent);
 
           case 7:
-            _context17.prev = 7;
+            _context18.prev = 7;
 
             unlock();
-            return _context17.finish(7);
+            return _context18.finish(7);
 
           case 10:
           case 'end':
-            return _context17.stop();
+            return _context18.stop();
         }
       }
-    }, _callee17, this, [[3,, 7, 10]]);
+    }, _callee18, this, [[3,, 7, 10]]);
   }));
 
   function getSpentView(_x26) {
-    return _ref19.apply(this, arguments);
+    return _ref28.apply(this, arguments);
   }
 
   return getSpentView;
@@ -2853,158 +3144,105 @@ Mempool.prototype.getSpentView = function () {
  */
 
 Mempool.prototype.getCoinView = function () {
-  var _ref20 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee18(tx) {
-    var view, _iteratorNormalCompletion23, _didIteratorError23, _iteratorError23, _iterator23, _step23, _ref21, prevout, entry, coin, coins;
+  var _ref29 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee19(tx) {
+    var view, _iteratorNormalCompletion26, _didIteratorError26, _iteratorError26, _iterator26, _step26, _ref30, prevout, hash, index, _tx, coin;
 
-    return _regenerator2.default.wrap(function _callee18$(_context18) {
+    return _regenerator2.default.wrap(function _callee19$(_context19) {
       while (1) {
-        switch (_context18.prev = _context18.next) {
+        switch (_context19.prev = _context19.next) {
           case 0:
             view = new CoinView();
-            _iteratorNormalCompletion23 = true;
-            _didIteratorError23 = false;
-            _iteratorError23 = undefined;
-            _context18.prev = 4;
-            _iterator23 = (0, _getIterator3.default)(tx.inputs);
+            _iteratorNormalCompletion26 = true;
+            _didIteratorError26 = false;
+            _iteratorError26 = undefined;
+            _context19.prev = 4;
+            _iterator26 = (0, _getIterator3.default)(tx.inputs);
 
           case 6:
-            if (_iteratorNormalCompletion23 = (_step23 = _iterator23.next()).done) {
-              _context18.next = 24;
+            if (_iteratorNormalCompletion26 = (_step26 = _iterator26.next()).done) {
+              _context19.next = 21;
               break;
             }
 
-            _ref21 = _step23.value;
-            prevout = _ref21.prevout;
-            entry = this.getEntry(prevout.hash);
+            _ref30 = _step26.value;
+            prevout = _ref30.prevout;
+            hash = prevout.hash, index = prevout.index;
+            _tx = this.getTX(hash);
 
-            if (!entry) {
-              _context18.next = 13;
+            if (!_tx) {
+              _context19.next = 14;
               break;
             }
 
-            view.addTX(entry.tx, -1);
-            return _context18.abrupt('continue', 21);
+            if (index < _tx.outputs.length) view.addIndex(_tx, index, -1);
+            return _context19.abrupt('continue', 18);
 
-          case 13:
-            _context18.next = 15;
+          case 14:
+            _context19.next = 16;
             return this.chain.readCoin(prevout);
 
-          case 15:
-            coin = _context18.sent;
+          case 16:
+            coin = _context19.sent;
 
-            if (coin) {
-              _context18.next = 20;
-              break;
-            }
 
-            coins = new Coins();
+            if (coin) view.addEntry(prevout, coin);
 
-            view.add(prevout.hash, coins);
-            return _context18.abrupt('continue', 21);
-
-          case 20:
-
-            view.addEntry(prevout, coin);
+          case 18:
+            _iteratorNormalCompletion26 = true;
+            _context19.next = 6;
+            break;
 
           case 21:
-            _iteratorNormalCompletion23 = true;
-            _context18.next = 6;
+            _context19.next = 27;
             break;
 
-          case 24:
-            _context18.next = 30;
-            break;
+          case 23:
+            _context19.prev = 23;
+            _context19.t0 = _context19['catch'](4);
+            _didIteratorError26 = true;
+            _iteratorError26 = _context19.t0;
 
-          case 26:
-            _context18.prev = 26;
-            _context18.t0 = _context18['catch'](4);
-            _didIteratorError23 = true;
-            _iteratorError23 = _context18.t0;
+          case 27:
+            _context19.prev = 27;
+            _context19.prev = 28;
 
-          case 30:
-            _context18.prev = 30;
-            _context18.prev = 31;
-
-            if (!_iteratorNormalCompletion23 && _iterator23.return) {
-              _iterator23.return();
+            if (!_iteratorNormalCompletion26 && _iterator26.return) {
+              _iterator26.return();
             }
 
-          case 33:
-            _context18.prev = 33;
+          case 30:
+            _context19.prev = 30;
 
-            if (!_didIteratorError23) {
-              _context18.next = 36;
+            if (!_didIteratorError26) {
+              _context19.next = 33;
               break;
             }
 
-            throw _iteratorError23;
+            throw _iteratorError26;
+
+          case 33:
+            return _context19.finish(30);
+
+          case 34:
+            return _context19.finish(27);
+
+          case 35:
+            return _context19.abrupt('return', view);
 
           case 36:
-            return _context18.finish(33);
-
-          case 37:
-            return _context18.finish(30);
-
-          case 38:
-            return _context18.abrupt('return', view);
-
-          case 39:
           case 'end':
-            return _context18.stop();
+            return _context19.stop();
         }
       }
-    }, _callee18, this, [[4, 26, 30, 38], [31,, 33, 37]]);
+    }, _callee19, this, [[4, 23, 27, 35], [28,, 30, 34]]);
   }));
 
   function getCoinView(_x27) {
-    return _ref20.apply(this, arguments);
+    return _ref29.apply(this, arguments);
   }
 
   return getCoinView;
 }();
-
-/**
- * Find missing outpoints.
- * @param {TX} tx
- * @param {CoinView} view
- * @returns {Hash[]}
- */
-
-Mempool.prototype.findMissing = function findMissing(tx, view) {
-  var missing = [];
-
-  var _iteratorNormalCompletion24 = true;
-  var _didIteratorError24 = false;
-  var _iteratorError24 = undefined;
-
-  try {
-    for (var _iterator24 = (0, _getIterator3.default)(tx.inputs), _step24; !(_iteratorNormalCompletion24 = (_step24 = _iterator24.next()).done); _iteratorNormalCompletion24 = true) {
-      var _ref22 = _step24.value;
-      var prevout = _ref22.prevout;
-
-      if (view.hasEntry(prevout)) continue;
-
-      missing.push(prevout.hash);
-    }
-  } catch (err) {
-    _didIteratorError24 = true;
-    _iteratorError24 = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion24 && _iterator24.return) {
-        _iterator24.return();
-      }
-    } finally {
-      if (_didIteratorError24) {
-        throw _iteratorError24;
-      }
-    }
-  }
-
-  if (missing.length === 0) return null;
-
-  return missing;
-};
 
 /**
  * Get a snapshot of all transaction hashes in the mempool. Used
@@ -3015,27 +3253,27 @@ Mempool.prototype.findMissing = function findMissing(tx, view) {
 Mempool.prototype.getSnapshot = function getSnapshot() {
   var keys = [];
 
-  var _iteratorNormalCompletion25 = true;
-  var _didIteratorError25 = false;
-  var _iteratorError25 = undefined;
+  var _iteratorNormalCompletion27 = true;
+  var _didIteratorError27 = false;
+  var _iteratorError27 = undefined;
 
   try {
-    for (var _iterator25 = (0, _getIterator3.default)(this.map.keys()), _step25; !(_iteratorNormalCompletion25 = (_step25 = _iterator25.next()).done); _iteratorNormalCompletion25 = true) {
-      var hash = _step25.value;
+    for (var _iterator27 = (0, _getIterator3.default)(this.map.keys()), _step27; !(_iteratorNormalCompletion27 = (_step27 = _iterator27.next()).done); _iteratorNormalCompletion27 = true) {
+      var hash = _step27.value;
 
       keys.push(hash);
     }
   } catch (err) {
-    _didIteratorError25 = true;
-    _iteratorError25 = err;
+    _didIteratorError27 = true;
+    _iteratorError27 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion25 && _iterator25.return) {
-        _iterator25.return();
+      if (!_iteratorNormalCompletion27 && _iterator27.return) {
+        _iterator27.return();
       }
     } finally {
-      if (_didIteratorError25) {
-        throw _iteratorError25;
+      if (_didIteratorError27) {
+        throw _iteratorError27;
       }
     }
   }
@@ -3082,28 +3320,29 @@ Mempool.prototype.trackEntry = function trackEntry(entry, view) {
 
   assert(!tx.isCoinbase());
 
-  var _iteratorNormalCompletion26 = true;
-  var _didIteratorError26 = false;
-  var _iteratorError26 = undefined;
+  var _iteratorNormalCompletion28 = true;
+  var _didIteratorError28 = false;
+  var _iteratorError28 = undefined;
 
   try {
-    for (var _iterator26 = (0, _getIterator3.default)(tx.inputs), _step26; !(_iteratorNormalCompletion26 = (_step26 = _iterator26.next()).done); _iteratorNormalCompletion26 = true) {
-      var input = _step26.value;
+    for (var _iterator28 = (0, _getIterator3.default)(tx.inputs), _step28; !(_iteratorNormalCompletion28 = (_step28 = _iterator28.next()).done); _iteratorNormalCompletion28 = true) {
+      var _ref31 = _step28.value;
+      var prevout = _ref31.prevout;
 
-      var key = input.prevout.toKey();
+      var key = prevout.toKey();
       this.spents.set(key, entry);
     }
   } catch (err) {
-    _didIteratorError26 = true;
-    _iteratorError26 = err;
+    _didIteratorError28 = true;
+    _iteratorError28 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion26 && _iterator26.return) {
-        _iterator26.return();
+      if (!_iteratorNormalCompletion28 && _iterator28.return) {
+        _iterator28.return();
       }
     } finally {
-      if (_didIteratorError26) {
-        throw _iteratorError26;
+      if (_didIteratorError28) {
+        throw _iteratorError28;
       }
     }
   }
@@ -3128,28 +3367,29 @@ Mempool.prototype.untrackEntry = function untrackEntry(entry) {
 
   assert(!tx.isCoinbase());
 
-  var _iteratorNormalCompletion27 = true;
-  var _didIteratorError27 = false;
-  var _iteratorError27 = undefined;
+  var _iteratorNormalCompletion29 = true;
+  var _didIteratorError29 = false;
+  var _iteratorError29 = undefined;
 
   try {
-    for (var _iterator27 = (0, _getIterator3.default)(tx.inputs), _step27; !(_iteratorNormalCompletion27 = (_step27 = _iterator27.next()).done); _iteratorNormalCompletion27 = true) {
-      var input = _step27.value;
+    for (var _iterator29 = (0, _getIterator3.default)(tx.inputs), _step29; !(_iteratorNormalCompletion29 = (_step29 = _iterator29.next()).done); _iteratorNormalCompletion29 = true) {
+      var _ref32 = _step29.value;
+      var prevout = _ref32.prevout;
 
-      var key = input.prevout.toKey();
+      var key = prevout.toKey();
       this.spents.delete(key);
     }
   } catch (err) {
-    _didIteratorError27 = true;
-    _iteratorError27 = err;
+    _didIteratorError29 = true;
+    _iteratorError29 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion27 && _iterator27.return) {
-        _iterator27.return();
+      if (!_iteratorNormalCompletion29 && _iterator29.return) {
+        _iterator29.return();
       }
     } finally {
-      if (_didIteratorError27) {
-        throw _iteratorError27;
+      if (_didIteratorError29) {
+        throw _iteratorError29;
       }
     }
   }
@@ -3171,28 +3411,30 @@ Mempool.prototype.indexEntry = function indexEntry(entry, view) {
 
   this.txIndex.insert(entry, view);
 
-  var _iteratorNormalCompletion28 = true;
-  var _didIteratorError28 = false;
-  var _iteratorError28 = undefined;
+  var _iteratorNormalCompletion30 = true;
+  var _didIteratorError30 = false;
+  var _iteratorError30 = undefined;
 
   try {
-    for (var _iterator28 = (0, _getIterator3.default)(tx.inputs), _step28; !(_iteratorNormalCompletion28 = (_step28 = _iterator28.next()).done); _iteratorNormalCompletion28 = true) {
-      var input = _step28.value;
+    for (var _iterator30 = (0, _getIterator3.default)(tx.inputs), _step30; !(_iteratorNormalCompletion30 = (_step30 = _iterator30.next()).done); _iteratorNormalCompletion30 = true) {
+      var _ref33 = _step30.value;
+      var prevout = _ref33.prevout;
+      var hash = prevout.hash,
+          index = prevout.index;
 
-      var prev = input.prevout;
-      this.coinIndex.remove(prev.hash, prev.index);
+      this.coinIndex.remove(hash, index);
     }
   } catch (err) {
-    _didIteratorError28 = true;
-    _iteratorError28 = err;
+    _didIteratorError30 = true;
+    _iteratorError30 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion28 && _iterator28.return) {
-        _iterator28.return();
+      if (!_iteratorNormalCompletion30 && _iterator30.return) {
+        _iterator30.return();
       }
     } finally {
-      if (_didIteratorError28) {
-        throw _iteratorError28;
+      if (_didIteratorError30) {
+        throw _iteratorError30;
       }
     }
   }
@@ -3214,32 +3456,34 @@ Mempool.prototype.unindexEntry = function unindexEntry(entry) {
 
   this.txIndex.remove(hash);
 
-  var _iteratorNormalCompletion29 = true;
-  var _didIteratorError29 = false;
-  var _iteratorError29 = undefined;
+  var _iteratorNormalCompletion31 = true;
+  var _didIteratorError31 = false;
+  var _iteratorError31 = undefined;
 
   try {
-    for (var _iterator29 = (0, _getIterator3.default)(tx.inputs), _step29; !(_iteratorNormalCompletion29 = (_step29 = _iterator29.next()).done); _iteratorNormalCompletion29 = true) {
-      var input = _step29.value;
+    for (var _iterator31 = (0, _getIterator3.default)(tx.inputs), _step31; !(_iteratorNormalCompletion31 = (_step31 = _iterator31.next()).done); _iteratorNormalCompletion31 = true) {
+      var _ref34 = _step31.value;
+      var prevout = _ref34.prevout;
+      var _hash3 = prevout.hash,
+          index = prevout.index;
 
-      var prevout = input.prevout.hash;
-      var prev = this.getTX(prevout.hash);
+      var prev = this.getTX(_hash3);
 
       if (!prev) continue;
 
-      this.coinIndex.insert(prev, prevout.index);
+      this.coinIndex.insert(prev, index);
     }
   } catch (err) {
-    _didIteratorError29 = true;
-    _iteratorError29 = err;
+    _didIteratorError31 = true;
+    _iteratorError31 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion29 && _iterator29.return) {
-        _iterator29.return();
+      if (!_iteratorNormalCompletion31 && _iterator31.return) {
+        _iterator31.return();
       }
     } finally {
-      if (_didIteratorError29) {
-        throw _iteratorError29;
+      if (_didIteratorError31) {
+        throw _iteratorError31;
       }
     }
   }
@@ -3257,16 +3501,18 @@ Mempool.prototype.unindexEntry = function unindexEntry(entry) {
  */
 
 Mempool.prototype.removeDoubleSpends = function removeDoubleSpends(tx) {
-  var _iteratorNormalCompletion30 = true;
-  var _didIteratorError30 = false;
-  var _iteratorError30 = undefined;
+  var _iteratorNormalCompletion32 = true;
+  var _didIteratorError32 = false;
+  var _iteratorError32 = undefined;
 
   try {
-    for (var _iterator30 = (0, _getIterator3.default)(tx.inputs), _step30; !(_iteratorNormalCompletion30 = (_step30 = _iterator30.next()).done); _iteratorNormalCompletion30 = true) {
-      var input = _step30.value;
+    for (var _iterator32 = (0, _getIterator3.default)(tx.inputs), _step32; !(_iteratorNormalCompletion32 = (_step32 = _iterator32.next()).done); _iteratorNormalCompletion32 = true) {
+      var _ref35 = _step32.value;
+      var prevout = _ref35.prevout;
+      var hash = prevout.hash,
+          index = prevout.index;
 
-      var prevout = input.prevout;
-      var spent = this.getSpent(prevout.hash, prevout.index);
+      var spent = this.getSpent(hash, index);
 
       if (!spent) continue;
 
@@ -3277,16 +3523,16 @@ Mempool.prototype.removeDoubleSpends = function removeDoubleSpends(tx) {
       this.emit('double spend', spent);
     }
   } catch (err) {
-    _didIteratorError30 = true;
-    _iteratorError30 = err;
+    _didIteratorError32 = true;
+    _iteratorError32 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion30 && _iterator30.return) {
-        _iterator30.return();
+      if (!_iteratorNormalCompletion32 && _iterator32.return) {
+        _iterator32.return();
       }
     } finally {
-      if (_didIteratorError30) {
-        throw _iteratorError30;
+      if (_didIteratorError32) {
+        throw _iteratorError32;
       }
     }
   }
@@ -3549,95 +3795,15 @@ TXIndex.prototype.get = function get(addr) {
 
   var out = [];
 
-  var _iteratorNormalCompletion31 = true;
-  var _didIteratorError31 = false;
-  var _iteratorError31 = undefined;
-
-  try {
-    for (var _iterator31 = (0, _getIterator3.default)(items.values()), _step31; !(_iteratorNormalCompletion31 = (_step31 = _iterator31.next()).done); _iteratorNormalCompletion31 = true) {
-      var entry = _step31.value;
-
-      out.push(entry.tx);
-    }
-  } catch (err) {
-    _didIteratorError31 = true;
-    _iteratorError31 = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion31 && _iterator31.return) {
-        _iterator31.return();
-      }
-    } finally {
-      if (_didIteratorError31) {
-        throw _iteratorError31;
-      }
-    }
-  }
-
-  return out;
-};
-
-TXIndex.prototype.getMeta = function getMeta(addr) {
-  var items = this.index.get(addr);
-
-  if (!items) return [];
-
-  var out = [];
-
-  var _iteratorNormalCompletion32 = true;
-  var _didIteratorError32 = false;
-  var _iteratorError32 = undefined;
-
-  try {
-    for (var _iterator32 = (0, _getIterator3.default)(items.values()), _step32; !(_iteratorNormalCompletion32 = (_step32 = _iterator32.next()).done); _iteratorNormalCompletion32 = true) {
-      var entry = _step32.value;
-
-      var meta = TXMeta.fromTX(entry.tx);
-      meta.mtime = entry.time;
-      out.push(meta);
-    }
-  } catch (err) {
-    _didIteratorError32 = true;
-    _iteratorError32 = err;
-  } finally {
-    try {
-      if (!_iteratorNormalCompletion32 && _iterator32.return) {
-        _iterator32.return();
-      }
-    } finally {
-      if (_didIteratorError32) {
-        throw _iteratorError32;
-      }
-    }
-  }
-
-  return out;
-};
-
-TXIndex.prototype.insert = function insert(entry, view) {
-  var tx = entry.tx;
-  var hash = tx.hash('hex');
-  var addrs = tx.getHashes(view, 'hex');
-
-  if (addrs.length === 0) return;
-
   var _iteratorNormalCompletion33 = true;
   var _didIteratorError33 = false;
   var _iteratorError33 = undefined;
 
   try {
-    for (var _iterator33 = (0, _getIterator3.default)(addrs), _step33; !(_iteratorNormalCompletion33 = (_step33 = _iterator33.next()).done); _iteratorNormalCompletion33 = true) {
-      var addr = _step33.value;
+    for (var _iterator33 = (0, _getIterator3.default)(items.values()), _step33; !(_iteratorNormalCompletion33 = (_step33 = _iterator33.next()).done); _iteratorNormalCompletion33 = true) {
+      var entry = _step33.value;
 
-      var items = this.index.get(addr);
-
-      if (!items) {
-        items = new _map2.default();
-        this.index.set(addr, items);
-      }
-
-      assert(!items.has(hash));
-      items.set(hash, entry);
+      out.push(entry.tx);
     }
   } catch (err) {
     _didIteratorError33 = true;
@@ -3654,30 +3820,27 @@ TXIndex.prototype.insert = function insert(entry, view) {
     }
   }
 
-  this.map.set(hash, addrs);
+  return out;
 };
 
-TXIndex.prototype.remove = function remove(hash) {
-  var addrs = this.map.get(hash);
+TXIndex.prototype.getMeta = function getMeta(addr) {
+  var items = this.index.get(addr);
 
-  if (!addrs) return;
+  if (!items) return [];
+
+  var out = [];
 
   var _iteratorNormalCompletion34 = true;
   var _didIteratorError34 = false;
   var _iteratorError34 = undefined;
 
   try {
-    for (var _iterator34 = (0, _getIterator3.default)(addrs), _step34; !(_iteratorNormalCompletion34 = (_step34 = _iterator34.next()).done); _iteratorNormalCompletion34 = true) {
-      var addr = _step34.value;
+    for (var _iterator34 = (0, _getIterator3.default)(items.values()), _step34; !(_iteratorNormalCompletion34 = (_step34 = _iterator34.next()).done); _iteratorNormalCompletion34 = true) {
+      var entry = _step34.value;
 
-      var items = this.index.get(addr);
-
-      assert(items);
-      assert(items.has(hash));
-
-      items.delete(hash);
-
-      if (items.size === 0) this.index.delete(addr);
+      var meta = TXMeta.fromTX(entry.tx);
+      meta.mtime = entry.time;
+      out.push(meta);
     }
   } catch (err) {
     _didIteratorError34 = true;
@@ -3690,6 +3853,89 @@ TXIndex.prototype.remove = function remove(hash) {
     } finally {
       if (_didIteratorError34) {
         throw _iteratorError34;
+      }
+    }
+  }
+
+  return out;
+};
+
+TXIndex.prototype.insert = function insert(entry, view) {
+  var tx = entry.tx;
+  var hash = tx.hash('hex');
+  var addrs = tx.getHashes(view, 'hex');
+
+  if (addrs.length === 0) return;
+
+  var _iteratorNormalCompletion35 = true;
+  var _didIteratorError35 = false;
+  var _iteratorError35 = undefined;
+
+  try {
+    for (var _iterator35 = (0, _getIterator3.default)(addrs), _step35; !(_iteratorNormalCompletion35 = (_step35 = _iterator35.next()).done); _iteratorNormalCompletion35 = true) {
+      var addr = _step35.value;
+
+      var items = this.index.get(addr);
+
+      if (!items) {
+        items = new _map2.default();
+        this.index.set(addr, items);
+      }
+
+      assert(!items.has(hash));
+      items.set(hash, entry);
+    }
+  } catch (err) {
+    _didIteratorError35 = true;
+    _iteratorError35 = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion35 && _iterator35.return) {
+        _iterator35.return();
+      }
+    } finally {
+      if (_didIteratorError35) {
+        throw _iteratorError35;
+      }
+    }
+  }
+
+  this.map.set(hash, addrs);
+};
+
+TXIndex.prototype.remove = function remove(hash) {
+  var addrs = this.map.get(hash);
+
+  if (!addrs) return;
+
+  var _iteratorNormalCompletion36 = true;
+  var _didIteratorError36 = false;
+  var _iteratorError36 = undefined;
+
+  try {
+    for (var _iterator36 = (0, _getIterator3.default)(addrs), _step36; !(_iteratorNormalCompletion36 = (_step36 = _iterator36.next()).done); _iteratorNormalCompletion36 = true) {
+      var addr = _step36.value;
+
+      var items = this.index.get(addr);
+
+      assert(items);
+      assert(items.has(hash));
+
+      items.delete(hash);
+
+      if (items.size === 0) this.index.delete(addr);
+    }
+  } catch (err) {
+    _didIteratorError36 = true;
+    _iteratorError36 = err;
+  } finally {
+    try {
+      if (!_iteratorNormalCompletion36 && _iterator36.return) {
+        _iterator36.return();
+      }
+    } finally {
+      if (_didIteratorError36) {
+        throw _iteratorError36;
       }
     }
   }
@@ -3723,27 +3969,27 @@ CoinIndex.prototype.get = function get(addr) {
 
   var out = [];
 
-  var _iteratorNormalCompletion35 = true;
-  var _didIteratorError35 = false;
-  var _iteratorError35 = undefined;
+  var _iteratorNormalCompletion37 = true;
+  var _didIteratorError37 = false;
+  var _iteratorError37 = undefined;
 
   try {
-    for (var _iterator35 = (0, _getIterator3.default)(items.values()), _step35; !(_iteratorNormalCompletion35 = (_step35 = _iterator35.next()).done); _iteratorNormalCompletion35 = true) {
-      var coin = _step35.value;
+    for (var _iterator37 = (0, _getIterator3.default)(items.values()), _step37; !(_iteratorNormalCompletion37 = (_step37 = _iterator37.next()).done); _iteratorNormalCompletion37 = true) {
+      var coin = _step37.value;
 
       out.push(coin.toCoin());
     }
   } catch (err) {
-    _didIteratorError35 = true;
-    _iteratorError35 = err;
+    _didIteratorError37 = true;
+    _iteratorError37 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion35 && _iterator35.return) {
-        _iterator35.return();
+      if (!_iteratorNormalCompletion37 && _iterator37.return) {
+        _iterator37.return();
       }
     } finally {
-      if (_didIteratorError35) {
-        throw _iteratorError35;
+      if (_didIteratorError37) {
+        throw _iteratorError37;
       }
     }
   }
@@ -3848,65 +4094,27 @@ function MempoolCache(options) {
 MempoolCache.VERSION = 2;
 
 MempoolCache.prototype.getVersion = function () {
-  var _ref23 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee19() {
+  var _ref36 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee20() {
     var data;
-    return _regenerator2.default.wrap(function _callee19$(_context19) {
-      while (1) {
-        switch (_context19.prev = _context19.next) {
-          case 0:
-            _context19.next = 2;
-            return this.db.get(layout.V);
-
-          case 2:
-            data = _context19.sent;
-
-            if (data) {
-              _context19.next = 5;
-              break;
-            }
-
-            return _context19.abrupt('return', -1);
-
-          case 5:
-            return _context19.abrupt('return', data.readUInt32LE(0, true));
-
-          case 6:
-          case 'end':
-            return _context19.stop();
-        }
-      }
-    }, _callee19, this);
-  }));
-
-  function getVersion() {
-    return _ref23.apply(this, arguments);
-  }
-
-  return getVersion;
-}();
-
-MempoolCache.prototype.getTip = function () {
-  var _ref24 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee20() {
-    var hash;
     return _regenerator2.default.wrap(function _callee20$(_context20) {
       while (1) {
         switch (_context20.prev = _context20.next) {
           case 0:
             _context20.next = 2;
-            return this.db.get(layout.R);
+            return this.db.get(layout.V);
 
           case 2:
-            hash = _context20.sent;
+            data = _context20.sent;
 
-            if (hash) {
+            if (data) {
               _context20.next = 5;
               break;
             }
 
-            return _context20.abrupt('return', null);
+            return _context20.abrupt('return', -1);
 
           case 5:
-            return _context20.abrupt('return', hash.toString('hex'));
+            return _context20.abrupt('return', data.readUInt32LE(0, true));
 
           case 6:
           case 'end':
@@ -3916,32 +4124,70 @@ MempoolCache.prototype.getTip = function () {
     }, _callee20, this);
   }));
 
+  function getVersion() {
+    return _ref36.apply(this, arguments);
+  }
+
+  return getVersion;
+}();
+
+MempoolCache.prototype.getTip = function () {
+  var _ref37 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee21() {
+    var hash;
+    return _regenerator2.default.wrap(function _callee21$(_context21) {
+      while (1) {
+        switch (_context21.prev = _context21.next) {
+          case 0:
+            _context21.next = 2;
+            return this.db.get(layout.R);
+
+          case 2:
+            hash = _context21.sent;
+
+            if (hash) {
+              _context21.next = 5;
+              break;
+            }
+
+            return _context21.abrupt('return', null);
+
+          case 5:
+            return _context21.abrupt('return', hash.toString('hex'));
+
+          case 6:
+          case 'end':
+            return _context21.stop();
+        }
+      }
+    }, _callee21, this);
+  }));
+
   function getTip() {
-    return _ref24.apply(this, arguments);
+    return _ref37.apply(this, arguments);
   }
 
   return getTip;
 }();
 
 MempoolCache.prototype.getFees = function () {
-  var _ref25 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee21() {
+  var _ref38 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee22() {
     var data, fees;
-    return _regenerator2.default.wrap(function _callee21$(_context21) {
+    return _regenerator2.default.wrap(function _callee22$(_context22) {
       while (1) {
-        switch (_context21.prev = _context21.next) {
+        switch (_context22.prev = _context22.next) {
           case 0:
-            _context21.next = 2;
+            _context22.next = 2;
             return this.db.get(layout.F);
 
           case 2:
-            data = _context21.sent;
+            data = _context22.sent;
 
             if (data) {
-              _context21.next = 5;
+              _context22.next = 5;
               break;
             }
 
-            return _context21.abrupt('return', null);
+            return _context22.abrupt('return', null);
 
           case 5:
             fees = void 0;
@@ -3952,18 +4198,18 @@ MempoolCache.prototype.getFees = function () {
               this.logger.warning('Fee data failed deserialization: %s.', e.message);
             }
 
-            return _context21.abrupt('return', fees);
+            return _context22.abrupt('return', fees);
 
           case 8:
           case 'end':
-            return _context21.stop();
+            return _context22.stop();
         }
       }
-    }, _callee21, this);
+    }, _callee22, this);
   }));
 
   function getFees() {
-    return _ref25.apply(this, arguments);
+    return _ref38.apply(this, arguments);
   }
 
   return getFees;
@@ -3985,47 +4231,7 @@ MempoolCache.prototype.getKeys = function getKeys() {
 };
 
 MempoolCache.prototype.open = function () {
-  var _ref26 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee22() {
-    return _regenerator2.default.wrap(function _callee22$(_context22) {
-      while (1) {
-        switch (_context22.prev = _context22.next) {
-          case 0:
-            if (this.db) {
-              _context22.next = 2;
-              break;
-            }
-
-            return _context22.abrupt('return');
-
-          case 2:
-            _context22.next = 4;
-            return this.db.open();
-
-          case 4:
-            _context22.next = 6;
-            return this.verify();
-
-          case 6:
-
-            this.batch = this.db.batch();
-
-          case 7:
-          case 'end':
-            return _context22.stop();
-        }
-      }
-    }, _callee22, this);
-  }));
-
-  function open() {
-    return _ref26.apply(this, arguments);
-  }
-
-  return open;
-}();
-
-MempoolCache.prototype.close = function () {
-  var _ref27 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee23() {
+  var _ref39 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee23() {
     return _regenerator2.default.wrap(function _callee23$(_context23) {
       while (1) {
         switch (_context23.prev = _context23.next) {
@@ -4039,6 +4245,46 @@ MempoolCache.prototype.close = function () {
 
           case 2:
             _context23.next = 4;
+            return this.db.open();
+
+          case 4:
+            _context23.next = 6;
+            return this.verify();
+
+          case 6:
+
+            this.batch = this.db.batch();
+
+          case 7:
+          case 'end':
+            return _context23.stop();
+        }
+      }
+    }, _callee23, this);
+  }));
+
+  function open() {
+    return _ref39.apply(this, arguments);
+  }
+
+  return open;
+}();
+
+MempoolCache.prototype.close = function () {
+  var _ref40 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee24() {
+    return _regenerator2.default.wrap(function _callee24$(_context24) {
+      while (1) {
+        switch (_context24.prev = _context24.next) {
+          case 0:
+            if (this.db) {
+              _context24.next = 2;
+              break;
+            }
+
+            return _context24.abrupt('return');
+
+          case 2:
+            _context24.next = 4;
             return this.db.close();
 
           case 4:
@@ -4047,14 +4293,14 @@ MempoolCache.prototype.close = function () {
 
           case 5:
           case 'end':
-            return _context23.stop();
+            return _context24.stop();
         }
       }
-    }, _callee23, this);
+    }, _callee24, this);
   }));
 
   function close() {
-    return _ref27.apply(this, arguments);
+    return _ref40.apply(this, arguments);
   }
 
   return close;
@@ -4090,54 +4336,25 @@ MempoolCache.prototype.clear = function clear() {
 };
 
 MempoolCache.prototype.flush = function () {
-  var _ref28 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee24() {
-    return _regenerator2.default.wrap(function _callee24$(_context24) {
+  var _ref41 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee25() {
+    return _regenerator2.default.wrap(function _callee25$(_context25) {
       while (1) {
-        switch (_context24.prev = _context24.next) {
+        switch (_context25.prev = _context25.next) {
           case 0:
             if (this.db) {
-              _context24.next = 2;
+              _context25.next = 2;
               break;
             }
 
-            return _context24.abrupt('return');
+            return _context25.abrupt('return');
 
           case 2:
-            _context24.next = 4;
+            _context25.next = 4;
             return this.batch.write();
 
           case 4:
 
             this.batch = this.db.batch();
-
-          case 5:
-          case 'end':
-            return _context24.stop();
-        }
-      }
-    }, _callee24, this);
-  }));
-
-  function flush() {
-    return _ref28.apply(this, arguments);
-  }
-
-  return flush;
-}();
-
-MempoolCache.prototype.init = function () {
-  var _ref29 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee25(hash) {
-    var batch;
-    return _regenerator2.default.wrap(function _callee25$(_context25) {
-      while (1) {
-        switch (_context25.prev = _context25.next) {
-          case 0:
-            batch = this.db.batch();
-
-            batch.put(layout.V, encoding.U32(MempoolCache.VERSION));
-            batch.put(layout.R, Buffer.from(hash, 'hex'));
-            _context25.next = 5;
-            return batch.write();
 
           case 5:
           case 'end':
@@ -4147,29 +4364,58 @@ MempoolCache.prototype.init = function () {
     }, _callee25, this);
   }));
 
+  function flush() {
+    return _ref41.apply(this, arguments);
+  }
+
+  return flush;
+}();
+
+MempoolCache.prototype.init = function () {
+  var _ref42 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee26(hash) {
+    var batch;
+    return _regenerator2.default.wrap(function _callee26$(_context26) {
+      while (1) {
+        switch (_context26.prev = _context26.next) {
+          case 0:
+            batch = this.db.batch();
+
+            batch.put(layout.V, encoding.U32(MempoolCache.VERSION));
+            batch.put(layout.R, Buffer.from(hash, 'hex'));
+            _context26.next = 5;
+            return batch.write();
+
+          case 5:
+          case 'end':
+            return _context26.stop();
+        }
+      }
+    }, _callee26, this);
+  }));
+
   function init(_x28) {
-    return _ref29.apply(this, arguments);
+    return _ref42.apply(this, arguments);
   }
 
   return init;
 }();
 
 MempoolCache.prototype.verify = function () {
-  var _ref30 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee26() {
+  var _ref43 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee27() {
     var version, tip;
-    return _regenerator2.default.wrap(function _callee26$(_context26) {
+    return _regenerator2.default.wrap(function _callee27$(_context27) {
       while (1) {
-        switch (_context26.prev = _context26.next) {
+        switch (_context27.prev = _context27.next) {
           case 0:
-            _context26.next = 2;
+            _context27.next = 2;
             return this.getVersion();
 
           case 2:
-            version = _context26.sent;
+            version = _context27.sent;
             tip = void 0;
 
             if (!(version === -1)) {
-              _context26.next = 10;
+              _context27.next = 10;
               break;
             }
 
@@ -4178,124 +4424,124 @@ MempoolCache.prototype.verify = function () {
 
             this.logger.info('Mempool cache is empty. Writing tip %s.', util.revHex(tip));
 
-            _context26.next = 10;
+            _context27.next = 10;
             return this.init(tip);
 
           case 10:
             if (!(version !== MempoolCache.VERSION)) {
-              _context26.next = 16;
+              _context27.next = 16;
               break;
             }
 
             this.logger.warning('Mempool cache version mismatch (%d != %d)!', version, MempoolCache.VERSION);
             this.logger.warning('Invalidating mempool cache.');
-            _context26.next = 15;
+            _context27.next = 15;
             return this.wipe();
 
           case 15:
-            return _context26.abrupt('return', false);
+            return _context27.abrupt('return', false);
 
           case 16:
-            _context26.next = 18;
+            _context27.next = 18;
             return this.getTip();
 
           case 18:
-            tip = _context26.sent;
+            tip = _context27.sent;
 
             if (!(tip !== this.chain.tip.hash)) {
-              _context26.next = 25;
+              _context27.next = 25;
               break;
             }
 
             this.logger.warning('Mempool tip not consistent with chain tip (%s != %s)!', util.revHex(tip), this.chain.tip.rhash());
             this.logger.warning('Invalidating mempool cache.');
-            _context26.next = 24;
+            _context27.next = 24;
             return this.wipe();
 
           case 24:
-            return _context26.abrupt('return', false);
+            return _context27.abrupt('return', false);
 
           case 25:
-            return _context26.abrupt('return', true);
+            return _context27.abrupt('return', true);
 
           case 26:
           case 'end':
-            return _context26.stop();
+            return _context27.stop();
         }
       }
-    }, _callee26, this);
+    }, _callee27, this);
   }));
 
   function verify() {
-    return _ref30.apply(this, arguments);
+    return _ref43.apply(this, arguments);
   }
 
   return verify;
 }();
 
 MempoolCache.prototype.wipe = function () {
-  var _ref31 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee27() {
-    var batch, keys, _iteratorNormalCompletion36, _didIteratorError36, _iteratorError36, _iterator36, _step36, key;
+  var _ref44 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee28() {
+    var batch, keys, _iteratorNormalCompletion38, _didIteratorError38, _iteratorError38, _iterator38, _step38, key;
 
-    return _regenerator2.default.wrap(function _callee27$(_context27) {
+    return _regenerator2.default.wrap(function _callee28$(_context28) {
       while (1) {
-        switch (_context27.prev = _context27.next) {
+        switch (_context28.prev = _context28.next) {
           case 0:
             batch = this.db.batch();
-            _context27.next = 3;
+            _context28.next = 3;
             return this.getKeys();
 
           case 3:
-            keys = _context27.sent;
-            _iteratorNormalCompletion36 = true;
-            _didIteratorError36 = false;
-            _iteratorError36 = undefined;
-            _context27.prev = 7;
+            keys = _context28.sent;
+            _iteratorNormalCompletion38 = true;
+            _didIteratorError38 = false;
+            _iteratorError38 = undefined;
+            _context28.prev = 7;
 
 
-            for (_iterator36 = (0, _getIterator3.default)(keys); !(_iteratorNormalCompletion36 = (_step36 = _iterator36.next()).done); _iteratorNormalCompletion36 = true) {
-              key = _step36.value;
+            for (_iterator38 = (0, _getIterator3.default)(keys); !(_iteratorNormalCompletion38 = (_step38 = _iterator38.next()).done); _iteratorNormalCompletion38 = true) {
+              key = _step38.value;
 
               batch.del(key);
-            }_context27.next = 15;
+            }_context28.next = 15;
             break;
 
           case 11:
-            _context27.prev = 11;
-            _context27.t0 = _context27['catch'](7);
-            _didIteratorError36 = true;
-            _iteratorError36 = _context27.t0;
+            _context28.prev = 11;
+            _context28.t0 = _context28['catch'](7);
+            _didIteratorError38 = true;
+            _iteratorError38 = _context28.t0;
 
           case 15:
-            _context27.prev = 15;
-            _context27.prev = 16;
+            _context28.prev = 15;
+            _context28.prev = 16;
 
-            if (!_iteratorNormalCompletion36 && _iterator36.return) {
-              _iterator36.return();
+            if (!_iteratorNormalCompletion38 && _iterator38.return) {
+              _iterator38.return();
             }
 
           case 18:
-            _context27.prev = 18;
+            _context28.prev = 18;
 
-            if (!_didIteratorError36) {
-              _context27.next = 21;
+            if (!_didIteratorError38) {
+              _context28.next = 21;
               break;
             }
 
-            throw _iteratorError36;
+            throw _iteratorError38;
 
           case 21:
-            return _context27.finish(18);
+            return _context28.finish(18);
 
           case 22:
-            return _context27.finish(15);
+            return _context28.finish(15);
 
           case 23:
             batch.put(layout.V, encoding.U32(MempoolCache.VERSION));
             batch.put(layout.R, Buffer.from(this.chain.tip.hash, 'hex'));
             batch.del(layout.F);
 
-            _context27.next = 28;
+            _context28.next = 28;
             return batch.write();
 
           case 28:
@@ -4304,14 +4550,14 @@ MempoolCache.prototype.wipe = function () {
 
           case 29:
           case 'end':
-            return _context27.stop();
+            return _context28.stop();
         }
       }
-    }, _callee27, this, [[7, 11, 15, 23], [16,, 18, 22]]);
+    }, _callee28, this, [[7, 11, 15, 23], [16,, 18, 22]]);
   }));
 
   function wipe() {
-    return _ref31.apply(this, arguments);
+    return _ref44.apply(this, arguments);
   }
 
   return wipe;

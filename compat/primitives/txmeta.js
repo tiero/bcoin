@@ -149,12 +149,16 @@ TXMeta.prototype.toJSON = function toJSON() {
  * @returns {Object}
  */
 
-TXMeta.prototype.getJSON = function getJSON(network, view) {
+TXMeta.prototype.getJSON = function getJSON(network, view, chainHeight) {
   var json = this.tx.getJSON(network, view, null, this.index);
   json.mtime = this.mtime;
   json.height = this.height;
   json.block = this.block ? util.revHex(this.block) : null;
   json.time = this.time;
+  json.confirmations = 0;
+
+  if (chainHeight != null) json.confirmations = chainHeight - this.height + 1;
+
   return json;
 };
 

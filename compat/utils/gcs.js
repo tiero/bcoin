@@ -51,6 +51,7 @@ GCSFilter.prototype.header = function header(prev) {
 GCSFilter.prototype.match = function match(key, data) {
   var br = new BitReader(this.data);
   var term = siphash24(data, key).imod(this.m);
+
   var last = new U64(0);
 
   while (last.lt(term)) {
@@ -228,6 +229,7 @@ GCSFilter.prototype.fromItems = function fromItems(P, key, items) {
   values.sort(compare);
 
   var bw = new BitWriter();
+
   var last = new U64(0);
 
   var _iteratorNormalCompletion3 = true;
@@ -636,7 +638,7 @@ BitReader.prototype.readBits64 = function readBits64(count) {
  */
 
 function compare(a, b) {
-  return a.cmp(b) < 0 ? -1 : 1;
+  return a.cmp(b);
 }
 
 function siphash24(data, key) {

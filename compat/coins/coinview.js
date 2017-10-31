@@ -81,6 +81,20 @@ CoinView.prototype.add = function add(hash, coins) {
 };
 
 /**
+ * Ensure existence of coins object in the collection.
+ * @param {Hash} hash
+ * @returns {Coins}
+ */
+
+CoinView.prototype.ensure = function ensure(hash) {
+  var coins = this.map.get(hash);
+
+  if (coins) return coins;
+
+  return this.add(hash, new Coins());
+};
+
+/**
  * Remove coins from the collection.
  * @param {Coins} coins
  * @returns {Coins|null}
@@ -159,17 +173,7 @@ CoinView.prototype.addEntry = function addEntry(prevout, coin) {
   var hash = prevout.hash,
       index = prevout.index;
 
-  var coins = this.get(hash);
-
-  if (!coins) {
-    coins = new Coins();
-    this.add(hash, coins);
-  }
-
-  if (coin.output.script.isUnspendable()) return null;
-
-  if (coins.has(index)) return null;
-
+  var coins = this.ensure(hash);
   return coins.add(index, coin);
 };
 
@@ -180,20 +184,7 @@ CoinView.prototype.addEntry = function addEntry(prevout, coin) {
  */
 
 CoinView.prototype.addCoin = function addCoin(coin) {
-  var hash = coin.hash,
-      index = coin.index;
-
-  var coins = this.get(hash);
-
-  if (!coins) {
-    coins = new Coins();
-    this.add(hash, coins);
-  }
-
-  if (coin.script.isUnspendable()) return null;
-
-  if (coins.has(index)) return null;
-
+  var coins = this.ensure(coin.hash);
   return coins.addCoin(coin);
 };
 
@@ -208,18 +199,22 @@ CoinView.prototype.addOutput = function addOutput(prevout, output) {
   var hash = prevout.hash,
       index = prevout.index;
 
-  var coins = this.get(hash);
-
-  if (!coins) {
-    coins = new Coins();
-    this.add(hash, coins);
-  }
-
-  if (output.script.isUnspendable()) return null;
-
-  if (coins.has(index)) return null;
-
+  var coins = this.ensure(hash);
   return coins.addOutput(index, output);
+};
+
+/**
+ * Add an output to the collection by output index.
+ * @param {TX} tx
+ * @param {Number} index
+ * @param {Number} height
+ * @returns {CoinEntry|null}
+ */
+
+CoinView.prototype.addIndex = function addIndex(tx, index, height) {
+  var hash = tx.hash('hex');
+  var coins = this.ensure(hash);
+  return coins.addIndex(tx, index, height);
 };
 
 /**
@@ -607,217 +602,113 @@ CoinView.prototype.readInputs = function () {
 
 CoinView.prototype.spendInputs = function () {
   var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3(db, tx) {
-    var jobs, _iteratorNormalCompletion3, _didIteratorError3, _iteratorError3, _iterator3, _step3, _ref5, prevout, coins, _iteratorNormalCompletion4, _didIteratorError4, _iteratorError4, _iterator4, _step4, coin, _iteratorNormalCompletion5, _didIteratorError5, _iteratorError5, _iterator5, _step5, _ref6, _prevout, _coin;
+    var i, len, jobs, prevout, coins, _iteratorNormalCompletion3, _didIteratorError3, _iteratorError3, _iterator3, _step3, coin;
 
     return _regenerator2.default.wrap(function _callee3$(_context3) {
       while (1) {
         switch (_context3.prev = _context3.next) {
           case 0:
-            if (!(tx.inputs.length < 4)) {
-              _context3.next = 53;
+            i = 0;
+
+          case 1:
+            if (!(i < tx.inputs.length)) {
+              _context3.next = 38;
               break;
             }
 
+            len = Math.min(i + 4, tx.inputs.length);
             jobs = [];
+
+
+            for (; i < len; i++) {
+              prevout = tx.inputs[i].prevout;
+
+              jobs.push(this.readCoin(db, prevout));
+            }
+
+            _context3.next = 7;
+            return _promise2.default.all(jobs);
+
+          case 7:
+            coins = _context3.sent;
             _iteratorNormalCompletion3 = true;
             _didIteratorError3 = false;
             _iteratorError3 = undefined;
-            _context3.prev = 5;
+            _context3.prev = 11;
+            _iterator3 = (0, _getIterator3.default)(coins);
 
+          case 13:
+            if (_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done) {
+              _context3.next = 22;
+              break;
+            }
 
-            for (_iterator3 = (0, _getIterator3.default)(tx.inputs); !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-              _ref5 = _step3.value;
-              prevout = _ref5.prevout;
+            coin = _step3.value;
 
-              jobs.push(this.readCoin(db, prevout));
-            }_context3.next = 13;
+            if (!(!coin || coin.spent)) {
+              _context3.next = 17;
+              break;
+            }
+
+            return _context3.abrupt('return', false);
+
+          case 17:
+
+            coin.spent = true;
+            this.undo.push(coin);
+
+          case 19:
+            _iteratorNormalCompletion3 = true;
+            _context3.next = 13;
             break;
 
-          case 9:
-            _context3.prev = 9;
-            _context3.t0 = _context3['catch'](5);
+          case 22:
+            _context3.next = 28;
+            break;
+
+          case 24:
+            _context3.prev = 24;
+            _context3.t0 = _context3['catch'](11);
             _didIteratorError3 = true;
             _iteratorError3 = _context3.t0;
 
-          case 13:
-            _context3.prev = 13;
-            _context3.prev = 14;
+          case 28:
+            _context3.prev = 28;
+            _context3.prev = 29;
 
             if (!_iteratorNormalCompletion3 && _iterator3.return) {
               _iterator3.return();
             }
 
-          case 16:
-            _context3.prev = 16;
+          case 31:
+            _context3.prev = 31;
 
             if (!_didIteratorError3) {
-              _context3.next = 19;
+              _context3.next = 34;
               break;
             }
 
             throw _iteratorError3;
 
-          case 19:
-            return _context3.finish(16);
-
-          case 20:
-            return _context3.finish(13);
-
-          case 21:
-            _context3.next = 23;
-            return _promise2.default.all(jobs);
-
-          case 23:
-            coins = _context3.sent;
-            _iteratorNormalCompletion4 = true;
-            _didIteratorError4 = false;
-            _iteratorError4 = undefined;
-            _context3.prev = 27;
-            _iterator4 = (0, _getIterator3.default)(coins);
-
-          case 29:
-            if (_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done) {
-              _context3.next = 38;
-              break;
-            }
-
-            coin = _step4.value;
-
-            if (!(!coin || coin.spent)) {
-              _context3.next = 33;
-              break;
-            }
-
-            return _context3.abrupt('return', false);
-
-          case 33:
-
-            coin.spent = true;
-            this.undo.push(coin);
+          case 34:
+            return _context3.finish(31);
 
           case 35:
-            _iteratorNormalCompletion4 = true;
-            _context3.next = 29;
+            return _context3.finish(28);
+
+          case 36:
+            _context3.next = 1;
             break;
 
           case 38:
-            _context3.next = 44;
-            break;
-
-          case 40:
-            _context3.prev = 40;
-            _context3.t1 = _context3['catch'](27);
-            _didIteratorError4 = true;
-            _iteratorError4 = _context3.t1;
-
-          case 44:
-            _context3.prev = 44;
-            _context3.prev = 45;
-
-            if (!_iteratorNormalCompletion4 && _iterator4.return) {
-              _iterator4.return();
-            }
-
-          case 47:
-            _context3.prev = 47;
-
-            if (!_didIteratorError4) {
-              _context3.next = 50;
-              break;
-            }
-
-            throw _iteratorError4;
-
-          case 50:
-            return _context3.finish(47);
-
-          case 51:
-            return _context3.finish(44);
-
-          case 52:
             return _context3.abrupt('return', true);
 
-          case 53:
-            _iteratorNormalCompletion5 = true;
-            _didIteratorError5 = false;
-            _iteratorError5 = undefined;
-            _context3.prev = 56;
-            _iterator5 = (0, _getIterator3.default)(tx.inputs);
-
-          case 58:
-            if (_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done) {
-              _context3.next = 71;
-              break;
-            }
-
-            _ref6 = _step5.value;
-            _prevout = _ref6.prevout;
-            _context3.next = 63;
-            return this.readCoin(db, _prevout);
-
-          case 63:
-            _coin = _context3.sent;
-
-            if (!(!_coin || _coin.spent)) {
-              _context3.next = 66;
-              break;
-            }
-
-            return _context3.abrupt('return', false);
-
-          case 66:
-
-            _coin.spent = true;
-            this.undo.push(_coin);
-
-          case 68:
-            _iteratorNormalCompletion5 = true;
-            _context3.next = 58;
-            break;
-
-          case 71:
-            _context3.next = 77;
-            break;
-
-          case 73:
-            _context3.prev = 73;
-            _context3.t2 = _context3['catch'](56);
-            _didIteratorError5 = true;
-            _iteratorError5 = _context3.t2;
-
-          case 77:
-            _context3.prev = 77;
-            _context3.prev = 78;
-
-            if (!_iteratorNormalCompletion5 && _iterator5.return) {
-              _iterator5.return();
-            }
-
-          case 80:
-            _context3.prev = 80;
-
-            if (!_didIteratorError5) {
-              _context3.next = 83;
-              break;
-            }
-
-            throw _iteratorError5;
-
-          case 83:
-            return _context3.finish(80);
-
-          case 84:
-            return _context3.finish(77);
-
-          case 85:
-            return _context3.abrupt('return', true);
-
-          case 86:
+          case 39:
           case 'end':
             return _context3.stop();
         }
       }
-    }, _callee3, this, [[5, 9, 13, 21], [14,, 16, 20], [27, 40, 44, 52], [45,, 47, 51], [56, 73, 77, 85], [78,, 80, 84]]);
+    }, _callee3, this, [[11, 24, 28, 36], [29,, 31, 35]]);
   }));
 
   function spendInputs(_x5, _x6) {
@@ -837,14 +728,14 @@ CoinView.prototype.getSize = function getSize(tx) {
 
   size += tx.inputs.length;
 
-  var _iteratorNormalCompletion6 = true;
-  var _didIteratorError6 = false;
-  var _iteratorError6 = undefined;
+  var _iteratorNormalCompletion4 = true;
+  var _didIteratorError4 = false;
+  var _iteratorError4 = undefined;
 
   try {
-    for (var _iterator6 = (0, _getIterator3.default)(tx.inputs), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
-      var _ref7 = _step6.value;
-      var prevout = _ref7.prevout;
+    for (var _iterator4 = (0, _getIterator3.default)(tx.inputs), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+      var _ref5 = _step4.value;
+      var prevout = _ref5.prevout;
 
       var coin = this.getEntry(prevout);
 
@@ -853,16 +744,16 @@ CoinView.prototype.getSize = function getSize(tx) {
       size += coin.getSize();
     }
   } catch (err) {
-    _didIteratorError6 = true;
-    _iteratorError6 = err;
+    _didIteratorError4 = true;
+    _iteratorError4 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion6 && _iterator6.return) {
-        _iterator6.return();
+      if (!_iteratorNormalCompletion4 && _iterator4.return) {
+        _iterator4.return();
       }
     } finally {
-      if (_didIteratorError6) {
-        throw _iteratorError6;
+      if (_didIteratorError4) {
+        throw _iteratorError4;
       }
     }
   }
@@ -878,14 +769,14 @@ CoinView.prototype.getSize = function getSize(tx) {
  */
 
 CoinView.prototype.toWriter = function toWriter(bw, tx) {
-  var _iteratorNormalCompletion7 = true;
-  var _didIteratorError7 = false;
-  var _iteratorError7 = undefined;
+  var _iteratorNormalCompletion5 = true;
+  var _didIteratorError5 = false;
+  var _iteratorError5 = undefined;
 
   try {
-    for (var _iterator7 = (0, _getIterator3.default)(tx.inputs), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-      var _ref8 = _step7.value;
-      var prevout = _ref8.prevout;
+    for (var _iterator5 = (0, _getIterator3.default)(tx.inputs), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+      var _ref6 = _step5.value;
+      var prevout = _ref6.prevout;
 
       var coin = this.getEntry(prevout);
 
@@ -898,16 +789,16 @@ CoinView.prototype.toWriter = function toWriter(bw, tx) {
       coin.toWriter(bw);
     }
   } catch (err) {
-    _didIteratorError7 = true;
-    _iteratorError7 = err;
+    _didIteratorError5 = true;
+    _iteratorError5 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion7 && _iterator7.return) {
-        _iterator7.return();
+      if (!_iteratorNormalCompletion5 && _iterator5.return) {
+        _iterator5.return();
       }
     } finally {
-      if (_didIteratorError7) {
-        throw _iteratorError7;
+      if (_didIteratorError5) {
+        throw _iteratorError5;
       }
     }
   }
@@ -924,14 +815,14 @@ CoinView.prototype.toWriter = function toWriter(bw, tx) {
  */
 
 CoinView.prototype.fromReader = function fromReader(br, tx) {
-  var _iteratorNormalCompletion8 = true;
-  var _didIteratorError8 = false;
-  var _iteratorError8 = undefined;
+  var _iteratorNormalCompletion6 = true;
+  var _didIteratorError6 = false;
+  var _iteratorError6 = undefined;
 
   try {
-    for (var _iterator8 = (0, _getIterator3.default)(tx.inputs), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
-      var _ref9 = _step8.value;
-      var prevout = _ref9.prevout;
+    for (var _iterator6 = (0, _getIterator3.default)(tx.inputs), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+      var _ref7 = _step6.value;
+      var prevout = _ref7.prevout;
 
       if (br.readU8() === 0) continue;
 
@@ -940,16 +831,16 @@ CoinView.prototype.fromReader = function fromReader(br, tx) {
       this.addEntry(prevout, coin);
     }
   } catch (err) {
-    _didIteratorError8 = true;
-    _iteratorError8 = err;
+    _didIteratorError6 = true;
+    _iteratorError6 = err;
   } finally {
     try {
-      if (!_iteratorNormalCompletion8 && _iterator8.return) {
-        _iterator8.return();
+      if (!_iteratorNormalCompletion6 && _iterator6.return) {
+        _iterator6.return();
       }
     } finally {
-      if (_didIteratorError8) {
-        throw _iteratorError8;
+      if (_didIteratorError6) {
+        throw _iteratorError6;
       }
     }
   }

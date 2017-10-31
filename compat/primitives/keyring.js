@@ -60,14 +60,6 @@ KeyRing.prototype.fromOptions = function fromOptions(options, network) {
 
   var key = toKey(options);
 
-  if (Buffer.isBuffer(key)) return this.fromKey(key, network);
-
-  key = toKey(options.key);
-
-  if (options.publicKey) key = toKey(options.publicKey);
-
-  if (options.privateKey) key = toKey(options.privateKey);
-
   if (options.witness != null) {
     assert(typeof options.witness === 'boolean');
     this.witness = options.witness;
@@ -77,6 +69,14 @@ KeyRing.prototype.fromOptions = function fromOptions(options, network) {
     assert(typeof options.nested === 'boolean');
     this.nested = options.nested;
   }
+
+  if (Buffer.isBuffer(key)) return this.fromKey(key, network);
+
+  key = toKey(options.key);
+
+  if (options.publicKey) key = toKey(options.publicKey);
+
+  if (options.privateKey) key = toKey(options.privateKey);
 
   var script = options.script;
   var compress = options.compressed;

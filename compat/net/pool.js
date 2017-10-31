@@ -3026,7 +3026,7 @@ Pool.prototype.handleBlockInv = function () {
             this.logger.debug('Received %s block hashes from peer (%s).', hashes.length, peer.hostname());
 
             items = [];
-            exists = void 0;
+            exists = null;
             i = 0;
 
           case 14:
@@ -6286,6 +6286,7 @@ Pool.prototype.getTX = function getTX(peer, hashes) {
   if (peer.destroyed) throw new Error('Peer is destroyed (getdata).');
 
   var now = util.ms();
+
   var items = [];
 
   var _iteratorNormalCompletion17 = true;
@@ -6504,6 +6505,7 @@ Pool.prototype.resolveItem = function resolveItem(peer, item) {
 
 Pool.prototype.broadcast = function broadcast(msg) {
   var hash = msg.hash('hex');
+
   var item = this.invMap.get(hash);
 
   if (item) {

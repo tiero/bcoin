@@ -214,6 +214,25 @@ util.isBase58 = function isBase58(str) {
 };
 
 /**
+ * Test whether a string is bech32 (note that
+ * this doesn't guarantee address is bech32).
+ * @param {String?} str
+ * @returns {Boolean}
+ */
+
+util.isBech32 = function isBech32(str) {
+  if (typeof str !== 'string') return false;
+
+  if (str.toUpperCase() !== str && str.toLowerCase() !== str) return false;
+
+  if (str.length < 8 || str.length > 90) return false;
+
+  // it's unlikely any network will have hrp other than a-z symbols.
+  return (/^[a-z]{2}1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+$/i.test(str)
+  );
+};
+
+/**
  * Test whether a string is hex (length must be even).
  * Note that this _could_ await a false positive on
  * base58 strings.
@@ -881,10 +900,12 @@ util.toFixed = function toFixed(num, exp) {
   }
 
   var mult = pow10(exp);
+
   var lo = num % mult;
   var hi = (num - lo) / mult;
 
   lo = lo.toString(10);
+  hi = hi.toString(10);
 
   while (lo.length < exp) {
     lo = '0' + lo;

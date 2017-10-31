@@ -639,29 +639,24 @@ Wallet.prototype.setPassphrase = function () {
       while (1) {
         switch (_context8.prev = _context8.next) {
           case 0:
-            if (new_ == null) {
-              new_ = old;
-              old = null;
-            }
-
-            if (!(old != null)) {
-              _context8.next = 4;
+            if (!old) {
+              _context8.next = 3;
               break;
             }
 
-            _context8.next = 4;
+            _context8.next = 3;
             return this.decrypt(old);
 
-          case 4:
-            if (!(new_ != null)) {
-              _context8.next = 7;
+          case 3:
+            if (!new_) {
+              _context8.next = 6;
               break;
             }
 
-            _context8.next = 7;
+            _context8.next = 6;
             return this.encrypt(new_);
 
-          case 7:
+          case 6:
           case 'end':
             return _context8.stop();
         }

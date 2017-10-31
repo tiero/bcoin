@@ -967,7 +967,7 @@ RPC.prototype.getBalance = function () {
             wallet = this.wallet;
             valid = new Validator([args]);
             name = valid.str(0);
-            minconf = valid.u32(1, 0);
+            minconf = valid.u32(1, 1);
             watchOnly = valid.bool(2, false);
 
 

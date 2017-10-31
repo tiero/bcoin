@@ -1586,9 +1586,10 @@ Chain.prototype.reorganize = function () {
 
             this.logger.warning('Chain reorganization: old=%s(%d) new=%s(%d)', tip.rhash(), tip.height, competitor.rhash(), competitor.height);
 
-            this.emit('reorganize', tip, competitor);
+            _context12.next = 44;
+            return this.fire('reorganize', tip, competitor);
 
-          case 43:
+          case 44:
           case 'end':
             return _context12.stop();
         }
@@ -1721,9 +1722,10 @@ Chain.prototype.reorganizeSPV = function () {
 
             this.logger.warning('Chain replay from height %d necessary.', fork.height);
 
-            this.emit('reorganize', tip, competitor);
+            _context13.next = 49;
+            return this.fire('reorganize', tip, competitor);
 
-          case 48:
+          case 49:
           case 'end':
             return _context13.stop();
         }
@@ -2943,13 +2945,12 @@ Chain.prototype.verifyCheckpoint = function verifyCheckpoint(prev, hash) {
  */
 
 Chain.prototype.storeOrphan = function storeOrphan(block, flags, id) {
-  var hash = block.hash('hex');
   var height = block.getCoinbaseHeight();
   var orphan = this.orphanPrev.get(block.prevBlock);
 
   // The orphan chain forked.
   if (orphan) {
-    assert(orphan.block.hash('hex') !== hash);
+    assert(orphan.block.hash('hex') !== block.hash('hex'));
     assert(orphan.block.prevBlock === block.prevBlock);
 
     this.logger.warning('Removing forked orphan block: %s (%d).', orphan.block.rhash(), height);
@@ -2958,10 +2959,7 @@ Chain.prototype.storeOrphan = function storeOrphan(block, flags, id) {
   }
 
   this.limitOrphans();
-
-  orphan = new Orphan(block, flags, id);
-
-  this.addOrphan(orphan);
+  this.addOrphan(new Orphan(block, flags, id));
 
   this.logger.debug('Storing orphan block: %s (%d).', block.rhash(), height);
 
@@ -3602,7 +3600,7 @@ Chain.prototype.getLocator = function () {
 
 Chain.prototype._getLocator = function () {
   var _ref37 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee33(start) {
-    var entry, hashes, hash, height, step, main, ancestor;
+    var entry, hashes, main, hash, height, step, ancestor;
     return _regenerator2.default.wrap(function _callee33$(_context33) {
       while (1) {
         switch (_context33.prev = _context33.next) {
@@ -3624,21 +3622,21 @@ Chain.prototype._getLocator = function () {
               hashes.push(start);
             }
 
+            _context33.next = 9;
+            return this.isMainChain(entry);
+
+          case 9:
+            main = _context33.sent;
             hash = entry.hash;
             height = entry.height;
             step = 1;
-            _context33.next = 12;
-            return this.isMainChain(entry);
-
-          case 12:
-            main = _context33.sent;
 
 
             hashes.push(hash);
 
           case 14:
             if (!(height > 0)) {
-              _context33.next = 33;
+              _context33.next = 36;
               break;
             }
 
@@ -3660,7 +3658,7 @@ Chain.prototype._getLocator = function () {
             hash = _context33.sent;
 
             assert(hash);
-            _context33.next = 30;
+            _context33.next = 33;
             break;
 
           case 25:
@@ -3671,18 +3669,24 @@ Chain.prototype._getLocator = function () {
             ancestor = _context33.sent;
 
             assert(ancestor);
+            _context33.next = 31;
+            return this.isMainChain(ancestor);
+
+          case 31:
+            main = _context33.sent;
+
             hash = ancestor.hash;
 
-          case 30:
+          case 33:
 
             hashes.push(hash);
             _context33.next = 14;
             break;
 
-          case 33:
+          case 36:
             return _context33.abrupt('return', hashes);
 
-          case 34:
+          case 37:
           case 'end':
             return _context33.stop();
         }
@@ -3733,7 +3737,7 @@ Chain.prototype.getProofTime = function getProofTime(to, from) {
   var sign = void 0,
       work = void 0;
 
-  if (to.chainwork.cmp(from.chainwork) > 0) {
+  if (to.chainwork.gt(from.chainwork)) {
     work = to.chainwork.sub(from.chainwork);
     sign = 1;
   } else {
@@ -3917,7 +3921,7 @@ Chain.prototype.retarget = function retarget(prev, first) {
   target.imuln(actualTimespan);
   target.idivn(targetTimespan);
 
-  if (target.cmp(pow.limit) > 0) return pow.bits;
+  if (target.gt(pow.limit)) return pow.bits;
 
   return consensus.toCompact(target);
 };
@@ -4511,14 +4515,14 @@ Chain.prototype.verifyFinal = function () {
 
 Chain.prototype.getLocks = function () {
   var _ref46 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee42(prev, tx, view, flags) {
-    var GRANULARITY, DISABE_FLAG, TYPE_FLAG, MASK, minHeight, minTime, _iteratorNormalCompletion7, _didIteratorError7, _iteratorError7, _iterator7, _step7, _ref47, prevout, sequence, height, entry, time;
+    var GRANULARITY, DISABLE_FLAG, TYPE_FLAG, MASK, minHeight, minTime, _iteratorNormalCompletion7, _didIteratorError7, _iteratorError7, _iterator7, _step7, _ref47, prevout, sequence, height, entry, time;
 
     return _regenerator2.default.wrap(function _callee42$(_context42) {
       while (1) {
         switch (_context42.prev = _context42.next) {
           case 0:
             GRANULARITY = consensus.SEQUENCE_GRANULARITY;
-            DISABE_FLAG = consensus.SEQUENCE_DISABLE_FLAG;
+            DISABLE_FLAG = consensus.SEQUENCE_DISABLE_FLAG;
             TYPE_FLAG = consensus.SEQUENCE_TYPE_FLAG;
             MASK = consensus.SEQUENCE_MASK;
 
@@ -4556,7 +4560,7 @@ Chain.prototype.getLocks = function () {
             prevout = _ref47.prevout;
             sequence = _ref47.sequence;
 
-            if (!(sequence & DISABE_FLAG)) {
+            if (!(sequence & DISABLE_FLAG)) {
               _context42.next = 21;
               break;
             }
@@ -4682,22 +4686,24 @@ Chain.prototype.verifyLocks = function () {
             height = _ref50[0];
             time = _ref50[1];
 
+            if (!(height !== -1)) {
+              _context43.next = 9;
+              break;
+            }
+
             if (!(height >= prev.height + 1)) {
-              _context43.next = 8;
+              _context43.next = 9;
               break;
             }
 
             return _context43.abrupt('return', false);
 
-          case 8:
-            if (!(time === -1)) {
-              _context43.next = 10;
+          case 9:
+            if (!(time !== -1)) {
+              _context43.next = 15;
               break;
             }
 
-            return _context43.abrupt('return', true);
-
-          case 10:
             _context43.next = 12;
             return this.getMedianTime(prev);
 

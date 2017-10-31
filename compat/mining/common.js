@@ -129,7 +129,7 @@ common.getTarget = function getTarget(bits) {
 
   if (target.isNeg()) throw new Error('Target is negative.');
 
-  if (target.cmpn(0) === 0) throw new Error('Target is zero.');
+  if (target.isZero()) throw new Error('Target is zero.');
 
   return target.toArrayLike(Buffer, 'le', 32);
 };
@@ -143,7 +143,7 @@ common.getTarget = function getTarget(bits) {
 common.getBits = function getBits(data) {
   var target = new BN(data, 'le');
 
-  if (target.cmpn(0) === 0) throw new Error('Target is zero.');
+  if (target.isZero()) throw new Error('Target is zero.');
 
   return consensus.toCompact(target);
 };

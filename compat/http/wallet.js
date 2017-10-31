@@ -299,8 +299,8 @@ HTTPWallet.prototype.getBlock = function getBlock(height) {
  * @see Wallet#getCoin
  */
 
-HTTPWallet.prototype.getCoin = function getCoin(account, hash, index) {
-  return this.client.getWalletCoin(this.id, account, hash, index);
+HTTPWallet.prototype.getCoin = function getCoin(hash, index) {
+  return this.client.getWalletCoin(this.id, hash, index);
 };
 
 /**
@@ -315,8 +315,8 @@ HTTPWallet.prototype.zap = function zap(account, age) {
  * @see Wallet#createTX
  */
 
-HTTPWallet.prototype.createTX = function createTX(options, outputs) {
-  return this.client.createTX(this.id, options, outputs);
+HTTPWallet.prototype.createTX = function createTX(options) {
+  return this.client.createTX(this.id, options);
 };
 
 /**
@@ -452,8 +452,8 @@ HTTPWallet.prototype.retoken = function () {
  * @returns {Promise}
  */
 
-HTTPWallet.prototype.importPrivate = function importPrivate(account, key) {
-  return this.client.importPrivate(this.id, account, key);
+HTTPWallet.prototype.importPrivate = function importPrivate(account, key, passphrase) {
+  return this.client.importPrivate(this.id, account, key, passphrase);
 };
 
 /**

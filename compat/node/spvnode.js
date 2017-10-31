@@ -198,7 +198,11 @@ SPVNode.prototype._init = function _init() {
   }());
 
   this.chain.on('disconnect', function (entry, block) {
-    _this.emit('disconnect', entry);
+    _this.emit('disconnect', entry, block);
+  });
+
+  this.chain.on('reorganize', function (tip, competitor) {
+    _this.emit('reorganize', tip, competitor);
   });
 
   this.chain.on('reset', function (tip) {

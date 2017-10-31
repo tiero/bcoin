@@ -49,13 +49,13 @@ schnorr.hash = function hash(msg, r) {
  */
 
 schnorr.trySign = function trySign(msg, prv, k, pn) {
-  if (prv.cmpn(0) === 0) throw new Error('Bad private key.');
+  if (prv.isZero()) throw new Error('Bad private key.');
 
-  if (prv.cmp(curve.n) >= 0) throw new Error('Bad private key.');
+  if (prv.gte(curve.n)) throw new Error('Bad private key.');
 
-  if (k.cmpn(0) === 0) return null;
+  if (k.isZero()) return null;
 
-  if (k.cmp(curve.n) >= 0) return null;
+  if (k.gte(curve.n)) return null;
 
   var r = curve.g.mul(k);
 
@@ -68,15 +68,15 @@ schnorr.trySign = function trySign(msg, prv, k, pn) {
 
   var h = schnorr.hash(msg, r.getX());
 
-  if (h.cmpn(0) === 0) return null;
+  if (h.isZero()) return null;
 
-  if (h.cmp(curve.n) >= 0) return null;
+  if (h.gte(curve.n)) return null;
 
   var s = h.imul(prv);
   s = k.isub(s);
   s = s.umod(curve.n);
 
-  if (s.cmpn(0) === 0) return null;
+  if (s.isZero()) return null;
 
   return new Signature({ r: r.getX(), s: s });
 };
@@ -118,13 +118,13 @@ schnorr.verify = function verify(msg, signature, key) {
   var sig = new Signature(signature);
   var h = schnorr.hash(msg, sig.r);
 
-  if (h.cmp(curve.n) >= 0) throw new Error('Invalid hash.');
+  if (h.gte(curve.n)) throw new Error('Invalid hash.');
 
-  if (h.cmpn(0) === 0) throw new Error('Invalid hash.');
+  if (h.isZero()) throw new Error('Invalid hash.');
 
-  if (sig.s.cmp(curve.n) >= 0) throw new Error('Invalid S value.');
+  if (sig.s.gte(curve.n)) throw new Error('Invalid S value.');
 
-  if (sig.r.cmp(curve.p) > 0) throw new Error('Invalid R value.');
+  if (sig.r.gt(curve.p)) throw new Error('Invalid R value.');
 
   var k = curve.decodePoint(key);
   var l = k.mul(h);
@@ -133,7 +133,7 @@ schnorr.verify = function verify(msg, signature, key) {
 
   if (rl.y.isOdd()) throw new Error('Odd R value.');
 
-  return rl.getX().cmp(sig.r) === 0;
+  return rl.getX().eq(sig.r);
 };
 
 /**
@@ -147,13 +147,13 @@ schnorr.recover = function recover(signature, msg) {
   var sig = new Signature(signature);
   var h = schnorr.hash(msg, sig.r);
 
-  if (h.cmp(curve.n) >= 0) throw new Error('Invalid hash.');
+  if (h.gte(curve.n)) throw new Error('Invalid hash.');
 
-  if (h.cmpn(0) === 0) throw new Error('Invalid hash.');
+  if (h.isZero()) throw new Error('Invalid hash.');
 
-  if (sig.s.cmp(curve.n) >= 0) throw new Error('Invalid S value.');
+  if (sig.s.gte(curve.n)) throw new Error('Invalid S value.');
 
-  if (sig.r.cmp(curve.p) > 0) throw new Error('Invalid R value.');
+  if (sig.r.gt(curve.p)) throw new Error('Invalid R value.');
 
   var hinv = h.invm(curve.n);
   hinv = hinv.umod(curve.n);
@@ -177,7 +177,7 @@ schnorr.recover = function recover(signature, msg) {
 
   if (rl.y.isOdd()) throw new Error('Odd R value.');
 
-  if (rl.getX().cmp(sig.r) !== 0) throw new Error('Could not recover pubkey.');
+  if (!rl.getX().eq(sig.r)) throw new Error('Could not recover pubkey.');
 
   return Buffer.from(k.encode('array', true));
 };
@@ -196,13 +196,13 @@ schnorr.combineSigs = function combineSigs(sigs) {
   for (var i = 0; i < sigs.length; i++) {
     var sig = new Signature(sigs[i]);
 
-    if (sig.s.cmpn(0) === 0) throw new Error('Bad S value.');
+    if (sig.s.isZero()) throw new Error('Bad S value.');
 
-    if (sig.s.cmp(curve.n) >= 0) throw new Error('Bad S value.');
+    if (sig.s.gte(curve.n)) throw new Error('Bad S value.');
 
     if (!r) r = sig.r;
 
-    if (last && last.r.cmp(sig.r) !== 0) throw new Error('Bad signature combination.');
+    if (last && !last.r.eq(sig.r)) throw new Error('Bad signature combination.');
 
     s = s.iadd(sig.s);
     s = s.umod(curve.n);
@@ -210,7 +210,7 @@ schnorr.combineSigs = function combineSigs(sigs) {
     last = sig;
   }
 
-  if (s.cmpn(0) === 0) throw new Error('Bad combined signature.');
+  if (s.isZero()) throw new Error('Bad combined signature.');
 
   return new Signature({ r: r, s: s });
 };
@@ -302,9 +302,9 @@ schnorr.generateNoncePair = function generateNoncePair(msg, priv, data) {
   for (;;) {
     k = new BN(drbg.generate(len));
 
-    if (k.cmpn(0) === 0) continue;
+    if (k.isZero()) continue;
 
-    if (k.cmp(curve.n) >= 0) continue;
+    if (k.gte(curve.n)) continue;
 
     break;
   }

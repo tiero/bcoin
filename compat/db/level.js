@@ -1,11 +1,5 @@
 'use strict';
 
-var _getIterator2 = require('babel-runtime/core-js/get-iterator');
-
-var _getIterator3 = _interopRequireDefault(_getIterator2);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
 var Level = require('level-js');
 
 function DB(location) {
@@ -23,53 +17,19 @@ DB.prototype.close = function close(callback) {
 };
 
 DB.prototype.get = function get(key, options, callback) {
-  if (this.bufferKeys && Buffer.isBuffer(key)) key = key.toString('hex');
-  this.level.get(key, options, callback);
+  this.level.get(toHex(key), options, callback);
 };
 
 DB.prototype.put = function put(key, value, options, callback) {
-  if (this.bufferKeys && Buffer.isBuffer(key)) key = key.toString('hex');
-  this.level.put(key, value, options, callback);
+  this.level.put(toHex(key), value, options, callback);
 };
 
 DB.prototype.del = function del(key, options, callback) {
-  if (this.bufferKeys && Buffer.isBuffer(key)) key = key.toString('hex');
-  this.level.del(key, options, callback);
+  this.level.del(toHex(key), options, callback);
 };
 
-DB.prototype.batch = function batch(ops, options, callback) {
-  if (!ops) return new Batch(this);
-
-  if (this.bufferKeys) {
-    var _iteratorNormalCompletion = true;
-    var _didIteratorError = false;
-    var _iteratorError = undefined;
-
-    try {
-      for (var _iterator = (0, _getIterator3.default)(ops), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-        var op = _step.value;
-
-        if (Buffer.isBuffer(op.key)) op.key = op.key.toString('hex');
-      }
-    } catch (err) {
-      _didIteratorError = true;
-      _iteratorError = err;
-    } finally {
-      try {
-        if (!_iteratorNormalCompletion && _iterator.return) {
-          _iterator.return();
-        }
-      } finally {
-        if (_didIteratorError) {
-          throw _iteratorError;
-        }
-      }
-    }
-  }
-
-  this.level.batch(ops, options, callback);
-
-  return undefined;
+DB.prototype.batch = function batch() {
+  return new Batch(this);
 };
 
 DB.prototype.iterator = function iterator(options) {
@@ -87,15 +47,13 @@ function Batch(db) {
 }
 
 Batch.prototype.put = function put(key, value) {
-  if (this.db.bufferKeys && Buffer.isBuffer(key)) key = key.toString('hex');
-  this.batch.put(key, value);
+  this.batch.put(toHex(key), value);
   this.hasOps = true;
   return this;
 };
 
 Batch.prototype.del = function del(key) {
-  if (this.db.bufferKeys && Buffer.isBuffer(key)) key = key.toString('hex');
-  this.batch.del(key);
+  this.batch.del(toHex(key));
   this.hasOps = true;
   return this;
 };
@@ -112,16 +70,22 @@ Batch.prototype.clear = function clear() {
 };
 
 function Iterator(db, options) {
-  if (db.bufferKeys) {
-    if (Buffer.isBuffer(options.gt)) options.gt = options.gt.toString('hex');
-    if (Buffer.isBuffer(options.gte)) options.gte = options.gte.toString('hex');
-    if (Buffer.isBuffer(options.lt)) options.lt = options.lt.toString('hex');
-    if (Buffer.isBuffer(options.lte)) options.lte = options.lte.toString('hex');
-  }
-  options.keyAsBuffer = false;
+  var opt = {
+    gt: toHex(options.gt),
+    gte: toHex(options.gte),
+    lt: toHex(options.lt),
+    lte: toHex(options.lte),
+    limit: options.limit,
+    reverse: options.reverse,
+    keys: options.keys,
+    values: options.values,
+    keyAsBuffer: false,
+    valueAsBuffer: true
+  };
+
   this.db = db;
-  this.iter = db.level.iterator(options);
-  this._end = false;
+  this.iter = db.level.iterator(opt);
+  this.ended = false;
 }
 
 Iterator.prototype.next = function next(callback) {
@@ -131,7 +95,7 @@ Iterator.prototype.next = function next(callback) {
     // Hack for level-js: it doesn't actually
     // end iterators -- it keeps streaming keys
     // and values.
-    if (_this._end) return;
+    if (_this.ended) return;
 
     if (err) {
       callback(err);
@@ -152,17 +116,21 @@ Iterator.prototype.next = function next(callback) {
 };
 
 Iterator.prototype.seek = function seek(key) {
-  if (this.db.bufferKeys && Buffer.isBuffer(key)) key = key.toString('hex');
-  this.iter.seek(key);
+  this.iter.seek(toHex(key));
 };
 
 Iterator.prototype.end = function end(callback) {
-  if (this._end) {
+  if (this.ended) {
     callback(new Error('end() already called on iterator.'));
     return;
   }
-  this._end = true;
+  this.ended = true;
   this.iter.end(callback);
 };
+
+function toHex(key) {
+  if (Buffer.isBuffer(key)) return key.toString('hex');
+  return key;
+}
 
 module.exports = DB;

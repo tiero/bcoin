@@ -52,9 +52,9 @@ ec.generatePrivateKey = function generatePrivateKey() {
  */
 
 ec.publicKeyCreate = function publicKeyCreate(priv, compress) {
-  assert(Buffer.isBuffer(priv));
-
   if (compress == null) compress = true;
+
+  assert(Buffer.isBuffer(priv));
 
   var key = secp256k1.keyPair({ priv: priv });
 
@@ -68,9 +68,9 @@ ec.publicKeyCreate = function publicKeyCreate(priv, compress) {
  */
 
 ec.publicKeyConvert = function publicKeyConvert(key, compress) {
-  var point = curve.decodePoint(key);
-
   if (compress == null) compress = true;
+
+  var point = curve.decodePoint(key);
 
   return Buffer.from(point.encode('array', compress));
 };
@@ -99,11 +99,10 @@ ec.privateKeyTweakAdd = function privateKeyTweakAdd(privateKey, tweak) {
  */
 
 ec.publicKeyTweakAdd = function publicKeyTweakAdd(publicKey, tweak, compress) {
-  var key = curve.decodePoint(publicKey);
-  var point = curve.g.mul(new BN(tweak)).add(key);
-
   if (compress == null) compress = true;
 
+  var key = curve.decodePoint(publicKey);
+  var point = curve.g.mul(new BN(tweak)).add(key);
   var pub = Buffer.from(point.encode('array', compress));
 
   if (!ec.publicKeyVerify(pub)) throw new Error('Public key is invalid.');
@@ -203,7 +202,7 @@ ec.privateKeyVerify = function privateKeyVerify(key) {
 
   key = new BN(key);
 
-  return key.cmpn(0) !== 0 && key.cmp(curve.n) < 0;
+  return !key.isZero() && key.lt(curve.n);
 };
 
 /**
@@ -273,11 +272,11 @@ ec.isLowS = function isLowS(raw) {
     return false;
   }
 
-  if (sig.s.cmpn(0) === 0) return false;
+  if (sig.s.isZero()) return false;
 
   // If S is greater than half the order,
   // it's too high.
-  if (sig.s.cmp(secp256k1.nh) > 0) return false;
+  if (sig.s.gt(secp256k1.nh)) return false;
 
   return true;
 };

@@ -226,12 +226,13 @@ exports.BIP16_TIME = 1333238400;
  */
 
 exports.fromCompact = function fromCompact(compact) {
+  if (compact === 0) return new BN(0);
+
   var exponent = compact >>> 24;
   var negative = compact >>> 23 & 1;
+
   var mantissa = compact & 0x7fffff;
   var num = void 0;
-
-  if (compact === 0) return new BN(0);
 
   if (exponent <= 3) {
     mantissa >>>= 8 * (3 - exponent);
@@ -254,13 +255,10 @@ exports.fromCompact = function fromCompact(compact) {
  */
 
 exports.toCompact = function toCompact(num) {
-  var mantissa = void 0,
-      exponent = void 0,
-      compact = void 0;
+  if (num.isZero()) return 0;
 
-  if (num.cmpn(0) === 0) return 0;
-
-  exponent = num.byteLength();
+  var exponent = num.byteLength();
+  var mantissa = void 0;
 
   if (exponent <= 3) {
     mantissa = num.toNumber();
@@ -274,7 +272,7 @@ exports.toCompact = function toCompact(num) {
     exponent++;
   }
 
-  compact = exponent << 24 | mantissa;
+  var compact = exponent << 24 | mantissa;
 
   if (num.isNeg()) compact |= 0x800000;
 
@@ -293,11 +291,11 @@ exports.toCompact = function toCompact(num) {
 exports.verifyPOW = function verifyPOW(hash, bits) {
   var target = exports.fromCompact(bits);
 
-  if (target.isNeg() || target.cmpn(0) === 0) return false;
+  if (target.isNeg() || target.isZero()) return false;
 
-  hash = new BN(hash, 'le');
+  var num = new BN(hash, 'le');
 
-  if (hash.cmp(target) > 0) return false;
+  if (num.gt(target)) return false;
 
   return true;
 };
@@ -309,9 +307,9 @@ exports.verifyPOW = function verifyPOW(hash, bits) {
  */
 
 exports.getReward = function getReward(height, interval) {
-  var halvings = Math.floor(height / interval);
-
   assert(height >= 0, 'Bad height for reward.');
+
+  var halvings = Math.floor(height / interval);
 
   // BIP 42 (well, our own version of it,
   // since we can only handle 32 bit shifts).
@@ -335,8 +333,9 @@ exports.getReward = function getReward(height, interval) {
  */
 
 exports.hasBit = function hasBit(version, bit) {
-  var bits = version & exports.VERSION_TOP_MASK;
-  var topBits = exports.VERSION_TOP_BITS;
+  var TOP_MASK = exports.VERSION_TOP_MASK;
+  var TOP_BITS = exports.VERSION_TOP_BITS;
+  var bits = (version & TOP_MASK) >>> 0;
   var mask = 1 << bit;
-  return bits >>> 0 === topBits && (version & mask) !== 0;
+  return bits === TOP_BITS && (version & mask) !== 0;
 };

@@ -36,11 +36,9 @@ function Coins() {
  */
 
 Coins.prototype.add = function add(index, coin) {
-  assert(index >= 0);
-  assert(!this.outputs.has(index));
-
+  assert(index >>> 0 === index);
+  assert(coin);
   this.outputs.set(index, coin);
-
   return coin;
 };
 
@@ -52,8 +50,19 @@ Coins.prototype.add = function add(index, coin) {
  */
 
 Coins.prototype.addOutput = function addOutput(index, output) {
-  assert(!output.script.isUnspendable());
   return this.add(index, CoinEntry.fromOutput(output));
+};
+
+/**
+ * Add an output to the collection by output index.
+ * @param {TX} tx
+ * @param {Number} index
+ * @param {Number} height
+ * @returns {CoinEntry}
+ */
+
+Coins.prototype.addIndex = function addIndex(tx, index, height) {
+  return this.add(index, CoinEntry.fromTX(tx, index, height));
 };
 
 /**
@@ -63,7 +72,6 @@ Coins.prototype.addOutput = function addOutput(index, output) {
  */
 
 Coins.prototype.addCoin = function addCoin(coin) {
-  assert(!coin.script.isUnspendable());
   return this.add(coin.index, CoinEntry.fromCoin(coin));
 };
 
@@ -186,7 +194,9 @@ Coins.prototype.fromTX = function fromTX(tx, height) {
 
     if (output.script.isUnspendable()) continue;
 
-    this.outputs.set(i, CoinEntry.fromTX(tx, i, height));
+    var entry = CoinEntry.fromTX(tx, i, height);
+
+    this.outputs.set(i, entry);
   }
 
   return this;

@@ -430,7 +430,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
               view = _context5.sent;
 
 
-              res.send(200, meta.getJSON(_this2.network, view));
+              res.send(200, meta.getJSON(_this2.network, view, _this2.chain.height));
 
             case 14:
             case 'end':
@@ -486,7 +486,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
             case 17:
               view = _context6.sent;
 
-              result.push(meta.getJSON(_this2.network, view));
+              result.push(meta.getJSON(_this2.network, view, _this2.chain.height));
 
             case 19:
               _iteratorNormalCompletion3 = true;
@@ -585,7 +585,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
             case 17:
               view = _context7.sent;
 
-              result.push(meta.getJSON(_this2.network, view));
+              result.push(meta.getJSON(_this2.network, view, _this2.chain.height));
 
             case 19:
               _iteratorNormalCompletion4 = true;
@@ -646,7 +646,7 @@ HTTPServer.prototype.initRouter = function initRouter() {
   // Block by hash/height
   this.get('/block/:block', function () {
     var _ref8 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8(req, res) {
-      var valid, hash, block, view, height;
+      var valid, hash, block, view, height, confirmations;
       return _regenerator2.default.wrap(function _callee8$(_context8) {
         while (1) {
           switch (_context8.prev = _context8.next) {
@@ -695,11 +695,12 @@ HTTPServer.prototype.initRouter = function initRouter() {
 
             case 19:
               height = _context8.sent;
+              confirmations = _this2.chain.height - height;
 
 
-              res.send(200, block.getJSON(_this2.network, view, height));
+              res.send(200, block.getJSON(_this2.network, view, height, confirmations));
 
-            case 21:
+            case 22:
             case 'end':
               return _context8.stop();
           }

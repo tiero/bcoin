@@ -88,36 +88,36 @@ RPCClient.prototype.execute = function () {
             throw new RPCError('Unauthorized (bad API key).', -1);
 
           case 5:
-            if (!(res.statusCode !== 200)) {
-              _context.next = 7;
-              break;
-            }
-
-            throw new Error('Status code: ' + res.statusCode + '.');
-
-          case 7:
             if (!(res.type !== 'json')) {
-              _context.next = 9;
+              _context.next = 7;
               break;
             }
 
             throw new Error('Bad response (wrong content-type).');
 
-          case 9:
+          case 7:
             if (res.body) {
-              _context.next = 11;
+              _context.next = 9;
               break;
             }
 
             throw new Error('No body for JSON-RPC response.');
 
-          case 11:
+          case 9:
             if (!res.body.error) {
-              _context.next = 13;
+              _context.next = 11;
               break;
             }
 
             throw new RPCError(res.body.error.message, res.body.error.code);
+
+          case 11:
+            if (!(res.statusCode !== 200)) {
+              _context.next = 13;
+              break;
+            }
+
+            throw new Error('Status code: ' + res.statusCode + '.');
 
           case 13:
             return _context.abrupt('return', res.body.result);

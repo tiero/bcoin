@@ -114,8 +114,6 @@ ec.ecdh = function ecdh(pub, priv) {
  */
 
 ec.recover = function recover(msg, sig, j, compress) {
-  var key = void 0;
-
   if (!j) j = 0;
 
   try {
@@ -124,6 +122,7 @@ ec.recover = function recover(msg, sig, j, compress) {
     return null;
   }
 
+  var key = void 0;
   try {
     key = secp256k1.recover(msg, sig, j, compress);
   } catch (e) {

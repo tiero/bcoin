@@ -2574,7 +2574,7 @@ RPC.prototype.verifyTXOutProof = function () {
             for (_iterator11 = (0, _getIterator3.default)(tree.matches); !(_iteratorNormalCompletion11 = (_step11 = _iterator11.next()).done); _iteratorNormalCompletion11 = true) {
               hash = _step11.value;
 
-              out.push(util.revHex(hash));
+              out.push(util.revHex(hash.toString('hex')));
             }_context31.next = 27;
             break;
 
@@ -4329,7 +4329,7 @@ RPC.prototype.createRawTransaction = function () {
             _didIteratorError15 = false;
             _iteratorError15 = undefined;
             _context53.prev = 13;
-            _iterator15 = (0, _getIterator3.default)(tx.inputs);
+            _iterator15 = (0, _getIterator3.default)(inputs);
 
           case 15:
             if (_iteratorNormalCompletion15 = (_step15 = _iterator15.next()).done) {
@@ -4833,7 +4833,7 @@ RPC.prototype.signRawTransaction = function () {
             prev = _step17.value;
             _valid3 = new Validator([prev]);
             hash = _valid3.hash('txid');
-            index = _valid3.u32('index');
+            index = _valid3.u32('vout');
             scriptRaw = _valid3.buf('scriptPubKey');
             value = _valid3.ufixed('amount', 8);
             redeemRaw = _valid3.buf('redeemScript');

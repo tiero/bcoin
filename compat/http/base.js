@@ -726,6 +726,7 @@ HTTPBase.prototype.readBody = function readBody(req, enc, options) {
 
 HTTPBase.prototype._readBody = function _readBody(req, enc, options, resolve, reject) {
   var decode = new StringDecoder(enc);
+
   var hasData = false;
   var total = 0;
   var body = '';
@@ -1963,6 +1964,7 @@ Request.prototype.init = function init(req, res, url) {
 
 Request.prototype.parse = function parse(url) {
   var uri = URL.parse(url);
+
   var pathname = uri.pathname;
   var query = (0, _create2.default)(null);
   var trailing = false;

@@ -30,8 +30,6 @@ var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var assert = require('assert');
-var Lock = require('../utils/lock');
-var co = require('../utils/co');
 
 var LOW = Buffer.from([0x00]);
 var HIGH = Buffer.from([0xff]);
@@ -60,14 +58,13 @@ function LowlevelUp(backend, location, options) {
   this.options = new LLUOptions(options);
   this.backend = backend;
   this.location = location;
-  this.locker = new Lock();
 
   this.loading = false;
   this.closing = false;
   this.loaded = false;
 
-  this.db = null;
   this.binding = null;
+  this.leveldown = false;
 
   this.init();
 }
@@ -80,8 +77,8 @@ function LowlevelUp(backend, location, options) {
 
 LowlevelUp.prototype.init = function init() {
   var Backend = this.backend;
+
   var db = new Backend(this.location);
-  var binding = db;
 
   // Stay as close to the metal as possible.
   // We want to make calls to C++ directly.
@@ -94,77 +91,30 @@ LowlevelUp.prototype.init = function init() {
 
     // Go deeper.
     db = db.db;
-    binding = db;
   }
 
   // A lower-level binding.
-  if (db.binding) binding = db.binding;
-
-  this.db = db;
-  this.binding = binding;
+  if (db.binding) {
+    this.binding = db.binding;
+    this.leveldown = db !== db.binding;
+  } else {
+    this.binding = db;
+  }
 };
 
 /**
  * Open the database.
- * @method
  * @returns {Promise}
  */
 
 LowlevelUp.prototype.open = function () {
   var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
-    var unlock;
     return _regenerator2.default.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            _context.next = 2;
-            return this.locker.lock();
-
-          case 2:
-            unlock = _context.sent;
-            _context.prev = 3;
-            _context.next = 6;
-            return this._open();
-
-          case 6:
-            return _context.abrupt('return', _context.sent);
-
-          case 7:
-            _context.prev = 7;
-
-            unlock();
-            return _context.finish(7);
-
-          case 10:
-          case 'end':
-            return _context.stop();
-        }
-      }
-    }, _callee, this, [[3,, 7, 10]]);
-  }));
-
-  function open() {
-    return _ref.apply(this, arguments);
-  }
-
-  return open;
-}();
-
-/**
- * Open the database (without a lock).
- * @method
- * @private
- * @returns {Promise}
- */
-
-LowlevelUp.prototype._open = function () {
-  var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
-    return _regenerator2.default.wrap(function _callee2$(_context2) {
-      while (1) {
-        switch (_context2.prev = _context2.next) {
-          case 0:
             if (!this.loaded) {
-              _context2.next = 2;
+              _context.next = 2;
               break;
             }
 
@@ -177,20 +127,20 @@ LowlevelUp.prototype._open = function () {
 
             this.loading = true;
 
-            _context2.prev = 5;
-            _context2.next = 8;
+            _context.prev = 5;
+            _context.next = 8;
             return this.load();
 
           case 8:
-            _context2.next = 14;
+            _context.next = 14;
             break;
 
           case 10:
-            _context2.prev = 10;
-            _context2.t0 = _context2['catch'](5);
+            _context.prev = 10;
+            _context.t0 = _context['catch'](5);
 
             this.loading = false;
-            throw _context2.t0;
+            throw _context.t0;
 
           case 14:
 
@@ -199,80 +149,32 @@ LowlevelUp.prototype._open = function () {
 
           case 16:
           case 'end':
-            return _context2.stop();
+            return _context.stop();
         }
       }
-    }, _callee2, this, [[5, 10]]);
+    }, _callee, this, [[5, 10]]);
   }));
 
-  function _open() {
-    return _ref2.apply(this, arguments);
+  function open() {
+    return _ref.apply(this, arguments);
   }
 
-  return _open;
+  return open;
 }();
 
 /**
  * Close the database.
- * @method
  * @returns {Promise}
  */
 
 LowlevelUp.prototype.close = function () {
-  var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3() {
-    var unlock;
-    return _regenerator2.default.wrap(function _callee3$(_context3) {
+  var _ref2 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2() {
+    return _regenerator2.default.wrap(function _callee2$(_context2) {
       while (1) {
-        switch (_context3.prev = _context3.next) {
-          case 0:
-            _context3.next = 2;
-            return this.locker.lock();
-
-          case 2:
-            unlock = _context3.sent;
-            _context3.prev = 3;
-            _context3.next = 6;
-            return this._close();
-
-          case 6:
-            return _context3.abrupt('return', _context3.sent);
-
-          case 7:
-            _context3.prev = 7;
-
-            unlock();
-            return _context3.finish(7);
-
-          case 10:
-          case 'end':
-            return _context3.stop();
-        }
-      }
-    }, _callee3, this, [[3,, 7, 10]]);
-  }));
-
-  function close() {
-    return _ref3.apply(this, arguments);
-  }
-
-  return close;
-}();
-
-/**
- * Close the database (without a lock).
- * @method
- * @private
- * @returns {Promise}
- */
-
-LowlevelUp.prototype._close = function () {
-  var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4() {
-    return _regenerator2.default.wrap(function _callee4$(_context4) {
-      while (1) {
-        switch (_context4.prev = _context4.next) {
+        switch (_context2.prev = _context2.next) {
           case 0:
             if (this.loaded) {
-              _context4.next = 2;
+              _context2.next = 2;
               break;
             }
 
@@ -286,21 +188,21 @@ LowlevelUp.prototype._close = function () {
             this.loaded = false;
             this.closing = true;
 
-            _context4.prev = 6;
-            _context4.next = 9;
+            _context2.prev = 6;
+            _context2.next = 9;
             return this.unload();
 
           case 9:
-            _context4.next = 16;
+            _context2.next = 16;
             break;
 
           case 11:
-            _context4.prev = 11;
-            _context4.t0 = _context4['catch'](6);
+            _context2.prev = 11;
+            _context2.t0 = _context2['catch'](6);
 
             this.loaded = true;
             this.closing = false;
-            throw _context4.t0;
+            throw _context2.t0;
 
           case 16:
 
@@ -308,17 +210,17 @@ LowlevelUp.prototype._close = function () {
 
           case 17:
           case 'end':
-            return _context4.stop();
+            return _context2.stop();
         }
       }
-    }, _callee4, this, [[6, 11]]);
+    }, _callee2, this, [[6, 11]]);
   }));
 
-  function _close() {
-    return _ref4.apply(this, arguments);
+  function close() {
+    return _ref2.apply(this, arguments);
   }
 
-  return _close;
+  return close;
 }();
 
 /**
@@ -331,7 +233,7 @@ LowlevelUp.prototype.load = function load() {
   var _this = this;
 
   return new _promise2.default(function (resolve, reject) {
-    _this.binding.open(_this.options, co.wrap(resolve, reject));
+    _this.binding.open(_this.options, wrap(resolve, reject));
   });
 };
 
@@ -345,7 +247,7 @@ LowlevelUp.prototype.unload = function unload() {
   var _this2 = this;
 
   return new _promise2.default(function (resolve, reject) {
-    _this2.binding.close(co.wrap(resolve, reject));
+    _this2.binding.close(wrap(resolve, reject));
   });
 };
 
@@ -368,7 +270,7 @@ LowlevelUp.prototype.destroy = function destroy() {
       return;
     }
 
-    _this3.backend.destroy(_this3.location, co.wrap(resolve, reject));
+    _this3.backend.destroy(_this3.location, wrap(resolve, reject));
   });
 };
 
@@ -391,7 +293,7 @@ LowlevelUp.prototype.repair = function repair() {
       return;
     }
 
-    _this4.backend.repair(_this4.location, co.wrap(resolve, reject));
+    _this4.backend.repair(_this4.location, wrap(resolve, reject));
   });
 };
 
@@ -411,7 +313,7 @@ LowlevelUp.prototype.backup = function backup(path) {
       reject(new Error('Database is closed.'));
       return;
     }
-    _this5.binding.backup(path, co.wrap(resolve, reject));
+    _this5.binding.backup(path, wrap(resolve, reject));
   });
 };
 
@@ -460,7 +362,7 @@ LowlevelUp.prototype.put = function put(key, value) {
       reject(new Error('Database is closed.'));
       return;
     }
-    _this7.binding.put(key, value, co.wrap(resolve, reject));
+    _this7.binding.put(key, value, wrap(resolve, reject));
   });
 };
 
@@ -478,31 +380,19 @@ LowlevelUp.prototype.del = function del(key) {
       reject(new Error('Database is closed.'));
       return;
     }
-    _this8.binding.del(key, co.wrap(resolve, reject));
+    _this8.binding.del(key, wrap(resolve, reject));
   });
 };
 
 /**
  * Create an atomic batch.
- * @param {Array?} ops
  * @returns {Batch}
  */
 
-LowlevelUp.prototype.batch = function batch(ops) {
-  var _this9 = this;
+LowlevelUp.prototype.batch = function batch() {
+  if (!this.loaded) throw new Error('Database is closed.');
 
-  if (!ops) {
-    if (!this.loaded) throw new Error('Database is closed.');
-    return new Batch(this);
-  }
-
-  return new _promise2.default(function (resolve, reject) {
-    if (!_this9.loaded) {
-      reject(new Error('Database is closed.'));
-      return;
-    }
-    _this9.binding.batch(ops, co.wrap(resolve, reject));
-  });
+  return new Batch(this);
 };
 
 /**
@@ -539,20 +429,20 @@ LowlevelUp.prototype.getProperty = function getProperty(name) {
  */
 
 LowlevelUp.prototype.approximateSize = function approximateSize(start, end) {
-  var _this10 = this;
+  var _this9 = this;
 
   return new _promise2.default(function (resolve, reject) {
-    if (!_this10.loaded) {
+    if (!_this9.loaded) {
       reject(new Error('Database is closed.'));
       return;
     }
 
-    if (!_this10.binding.approximateSize) {
+    if (!_this9.binding.approximateSize) {
       reject(new Error('Cannot get size.'));
       return;
     }
 
-    _this10.binding.approximateSize(start, end, co.wrap(resolve, reject));
+    _this9.binding.approximateSize(start, end, wrap(resolve, reject));
   });
 };
 
@@ -564,24 +454,24 @@ LowlevelUp.prototype.approximateSize = function approximateSize(start, end) {
  */
 
 LowlevelUp.prototype.compactRange = function compactRange(start, end) {
-  var _this11 = this;
+  var _this10 = this;
 
   if (!start) start = LOW;
 
   if (!end) end = HIGH;
 
   return new _promise2.default(function (resolve, reject) {
-    if (!_this11.loaded) {
+    if (!_this10.loaded) {
       reject(new Error('Database is closed.'));
       return;
     }
 
-    if (!_this11.binding.compactRange) {
+    if (!_this10.binding.compactRange) {
       resolve();
       return;
     }
 
-    _this11.binding.compactRange(start, end, co.wrap(resolve, reject));
+    _this10.binding.compactRange(start, end, wrap(resolve, reject));
   });
 };
 
@@ -593,29 +483,29 @@ LowlevelUp.prototype.compactRange = function compactRange(start, end) {
  */
 
 LowlevelUp.prototype.has = function () {
-  var _ref5 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee5(key) {
+  var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3(key) {
     var value;
-    return _regenerator2.default.wrap(function _callee5$(_context5) {
+    return _regenerator2.default.wrap(function _callee3$(_context3) {
       while (1) {
-        switch (_context5.prev = _context5.next) {
+        switch (_context3.prev = _context3.next) {
           case 0:
-            _context5.next = 2;
+            _context3.next = 2;
             return this.get(key);
 
           case 2:
-            value = _context5.sent;
-            return _context5.abrupt('return', value != null);
+            value = _context3.sent;
+            return _context3.abrupt('return', value != null);
 
           case 4:
           case 'end':
-            return _context5.stop();
+            return _context3.stop();
         }
       }
-    }, _callee5, this);
+    }, _callee3, this);
   }));
 
   function has(_x) {
-    return _ref5.apply(this, arguments);
+    return _ref3.apply(this, arguments);
   }
 
   return has;
@@ -629,77 +519,42 @@ LowlevelUp.prototype.has = function () {
  */
 
 LowlevelUp.prototype.range = function () {
-  var _ref6 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6(options) {
-    var items, parse, iter, item;
-    return _regenerator2.default.wrap(function _callee6$(_context6) {
+  var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4(options) {
+    var iter, items;
+    return _regenerator2.default.wrap(function _callee4$(_context4) {
       while (1) {
-        switch (_context6.prev = _context6.next) {
+        switch (_context4.prev = _context4.next) {
           case 0:
-            items = [];
-            parse = options.parse;
             iter = this.iterator({
               gte: options.gte,
               lte: options.lte,
               keys: true,
               values: true
             });
+            items = [];
+            _context4.next = 4;
+            return iter.each(function (key, value) {
+              if (options.parse) {
+                var item = options.parse(key, value);
+                if (item) items.push(item);
+              } else {
+                items.push(new IteratorItem(key, value));
+              }
+            });
 
-          case 3:
-            _context6.next = 5;
-            return iter.next();
+          case 4:
+            return _context4.abrupt('return', items);
 
           case 5:
-            item = _context6.sent;
-
-            if (item) {
-              _context6.next = 8;
-              break;
-            }
-
-            return _context6.abrupt('break', 21);
-
-          case 8:
-            if (!parse) {
-              _context6.next = 18;
-              break;
-            }
-
-            _context6.prev = 9;
-
-            item = parse(item.key, item.value);
-            _context6.next = 18;
-            break;
-
-          case 13:
-            _context6.prev = 13;
-            _context6.t0 = _context6['catch'](9);
-            _context6.next = 17;
-            return iter.end();
-
-          case 17:
-            throw _context6.t0;
-
-          case 18:
-
-            if (item) items.push(item);
-
-          case 19:
-            _context6.next = 3;
-            break;
-
-          case 21:
-            return _context6.abrupt('return', items);
-
-          case 22:
           case 'end':
-            return _context6.stop();
+            return _context4.stop();
         }
       }
-    }, _callee6, this, [[9, 13]]);
+    }, _callee4, this);
   }));
 
   function range(_x2) {
-    return _ref6.apply(this, arguments);
+    return _ref4.apply(this, arguments);
   }
 
   return range;
@@ -713,79 +568,38 @@ LowlevelUp.prototype.range = function () {
  */
 
 LowlevelUp.prototype.keys = function () {
-  var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7(options) {
-    var items, parse, iter, item, key;
-    return _regenerator2.default.wrap(function _callee7$(_context7) {
+  var _ref5 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee5(options) {
+    var iter, items;
+    return _regenerator2.default.wrap(function _callee5$(_context5) {
       while (1) {
-        switch (_context7.prev = _context7.next) {
+        switch (_context5.prev = _context5.next) {
           case 0:
-            items = [];
-            parse = options.parse;
             iter = this.iterator({
               gte: options.gte,
               lte: options.lte,
               keys: true,
               values: false
             });
+            items = [];
+            _context5.next = 4;
+            return iter.each(function (key) {
+              if (options.parse) key = options.parse(key);
+              items.push(key);
+            });
 
-          case 3:
-            _context7.next = 5;
-            return iter.next();
+          case 4:
+            return _context5.abrupt('return', items);
 
           case 5:
-            item = _context7.sent;
-
-            if (item) {
-              _context7.next = 8;
-              break;
-            }
-
-            return _context7.abrupt('break', 22);
-
-          case 8:
-            key = item.key;
-
-            if (!parse) {
-              _context7.next = 19;
-              break;
-            }
-
-            _context7.prev = 10;
-
-            key = parse(key);
-            _context7.next = 19;
-            break;
-
-          case 14:
-            _context7.prev = 14;
-            _context7.t0 = _context7['catch'](10);
-            _context7.next = 18;
-            return iter.end();
-
-          case 18:
-            throw _context7.t0;
-
-          case 19:
-
-            if (key) items.push(key);
-
-          case 20:
-            _context7.next = 3;
-            break;
-
-          case 22:
-            return _context7.abrupt('return', items);
-
-          case 23:
           case 'end':
-            return _context7.stop();
+            return _context5.stop();
         }
       }
-    }, _callee7, this, [[10, 14]]);
+    }, _callee5, this);
   }));
 
   function keys(_x3) {
-    return _ref7.apply(this, arguments);
+    return _ref5.apply(this, arguments);
   }
 
   return keys;
@@ -799,79 +613,38 @@ LowlevelUp.prototype.keys = function () {
  */
 
 LowlevelUp.prototype.values = function () {
-  var _ref8 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8(options) {
-    var items, parse, iter, item, value;
-    return _regenerator2.default.wrap(function _callee8$(_context8) {
+  var _ref6 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6(options) {
+    var iter, items;
+    return _regenerator2.default.wrap(function _callee6$(_context6) {
       while (1) {
-        switch (_context8.prev = _context8.next) {
+        switch (_context6.prev = _context6.next) {
           case 0:
-            items = [];
-            parse = options.parse;
             iter = this.iterator({
               gte: options.gte,
               lte: options.lte,
               keys: false,
               values: true
             });
+            items = [];
+            _context6.next = 4;
+            return iter.each(function (value) {
+              if (options.parse) value = options.parse(value);
+              items.push(value);
+            });
 
-          case 3:
-            _context8.next = 5;
-            return iter.next();
+          case 4:
+            return _context6.abrupt('return', items);
 
           case 5:
-            item = _context8.sent;
-
-            if (item) {
-              _context8.next = 8;
-              break;
-            }
-
-            return _context8.abrupt('break', 22);
-
-          case 8:
-            value = item.value;
-
-            if (!parse) {
-              _context8.next = 19;
-              break;
-            }
-
-            _context8.prev = 10;
-
-            value = parse(value);
-            _context8.next = 19;
-            break;
-
-          case 14:
-            _context8.prev = 14;
-            _context8.t0 = _context8['catch'](10);
-            _context8.next = 18;
-            return iter.end();
-
-          case 18:
-            throw _context8.t0;
-
-          case 19:
-
-            if (value) items.push(value);
-
-          case 20:
-            _context8.next = 3;
-            break;
-
-          case 22:
-            return _context8.abrupt('return', items);
-
-          case 23:
           case 'end':
-            return _context8.stop();
+            return _context6.stop();
         }
       }
-    }, _callee8, this, [[10, 14]]);
+    }, _callee6, this);
   }));
 
   function values(_x4) {
-    return _ref8.apply(this, arguments);
+    return _ref6.apply(this, arguments);
   }
 
   return values;
@@ -884,26 +657,26 @@ LowlevelUp.prototype.values = function () {
  */
 
 LowlevelUp.prototype.dump = function () {
-  var _ref9 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee9() {
+  var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7() {
     var records, items, _iteratorNormalCompletion, _didIteratorError, _iteratorError, _iterator, _step, item, key, value;
 
-    return _regenerator2.default.wrap(function _callee9$(_context9) {
+    return _regenerator2.default.wrap(function _callee7$(_context7) {
       while (1) {
-        switch (_context9.prev = _context9.next) {
+        switch (_context7.prev = _context7.next) {
           case 0:
             records = (0, _create2.default)(null);
-            _context9.next = 3;
+            _context7.next = 3;
             return this.range({
               gte: LOW,
               lte: HIGH
             });
 
           case 3:
-            items = _context9.sent;
+            items = _context7.sent;
             _iteratorNormalCompletion = true;
             _didIteratorError = false;
             _iteratorError = undefined;
-            _context9.prev = 7;
+            _context7.prev = 7;
 
 
             for (_iterator = (0, _getIterator3.default)(items); !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
@@ -914,52 +687,52 @@ LowlevelUp.prototype.dump = function () {
               records[key] = value;
             }
 
-            _context9.next = 15;
+            _context7.next = 15;
             break;
 
           case 11:
-            _context9.prev = 11;
-            _context9.t0 = _context9['catch'](7);
+            _context7.prev = 11;
+            _context7.t0 = _context7['catch'](7);
             _didIteratorError = true;
-            _iteratorError = _context9.t0;
+            _iteratorError = _context7.t0;
 
           case 15:
-            _context9.prev = 15;
-            _context9.prev = 16;
+            _context7.prev = 15;
+            _context7.prev = 16;
 
             if (!_iteratorNormalCompletion && _iterator.return) {
               _iterator.return();
             }
 
           case 18:
-            _context9.prev = 18;
+            _context7.prev = 18;
 
             if (!_didIteratorError) {
-              _context9.next = 21;
+              _context7.next = 21;
               break;
             }
 
             throw _iteratorError;
 
           case 21:
-            return _context9.finish(18);
+            return _context7.finish(18);
 
           case 22:
-            return _context9.finish(15);
+            return _context7.finish(15);
 
           case 23:
-            return _context9.abrupt('return', records);
+            return _context7.abrupt('return', records);
 
           case 24:
           case 'end':
-            return _context9.stop();
+            return _context7.stop();
         }
       }
-    }, _callee9, this, [[7, 11, 15, 23], [16,, 18, 22]]);
+    }, _callee7, this, [[7, 11, 15, 23], [16,, 18, 22]]);
   }));
 
   function dump() {
-    return _ref9.apply(this, arguments);
+    return _ref7.apply(this, arguments);
   }
 
   return dump;
@@ -973,52 +746,55 @@ LowlevelUp.prototype.dump = function () {
  */
 
 LowlevelUp.prototype.checkVersion = function () {
-  var _ref10 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee10(key, version) {
-    var data;
-    return _regenerator2.default.wrap(function _callee10$(_context10) {
+  var _ref8 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8(key, version) {
+    var data, value, batch, num;
+    return _regenerator2.default.wrap(function _callee8$(_context8) {
       while (1) {
-        switch (_context10.prev = _context10.next) {
+        switch (_context8.prev = _context8.next) {
           case 0:
-            _context10.next = 2;
+            _context8.next = 2;
             return this.get(key);
 
           case 2:
-            data = _context10.sent;
+            data = _context8.sent;
 
             if (data) {
-              _context10.next = 9;
+              _context8.next = 11;
               break;
             }
 
-            data = Buffer.allocUnsafe(4);
-            data.writeUInt32LE(version, 0, true);
-            _context10.next = 8;
-            return this.put(key, data);
+            value = Buffer.allocUnsafe(4);
 
-          case 8:
-            return _context10.abrupt('return');
+            value.writeUInt32LE(version, 0, true);
+            batch = this.batch();
 
-          case 9:
+            batch.put(key, value);
+            _context8.next = 10;
+            return batch.write();
 
-            data = data.readUInt32LE(0, true);
+          case 10:
+            return _context8.abrupt('return');
 
-            if (!(data !== version)) {
-              _context10.next = 12;
+          case 11:
+            num = data.readUInt32LE(0, true);
+
+            if (!(num !== version)) {
+              _context8.next = 14;
               break;
             }
 
             throw new Error(VERSION_ERROR);
 
-          case 12:
+          case 14:
           case 'end':
-            return _context10.stop();
+            return _context8.stop();
         }
       }
-    }, _callee10, this);
+    }, _callee8, this);
   }));
 
   function checkVersion(_x5, _x6) {
-    return _ref10.apply(this, arguments);
+    return _ref8.apply(this, arguments);
   }
 
   return checkVersion;
@@ -1032,115 +808,115 @@ LowlevelUp.prototype.checkVersion = function () {
  */
 
 LowlevelUp.prototype.clone = function () {
-  var _ref11 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee11(path) {
-    var options, hwm, tmp, batch, total, iter, item;
-    return _regenerator2.default.wrap(function _callee11$(_context11) {
+  var _ref9 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee9(path) {
+    var hwm, options, tmp, iter, batch, total, key, value;
+    return _regenerator2.default.wrap(function _callee9$(_context9) {
       while (1) {
-        switch (_context11.prev = _context11.next) {
+        switch (_context9.prev = _context9.next) {
           case 0:
             if (this.loaded) {
-              _context11.next = 2;
+              _context9.next = 2;
               break;
             }
 
             throw new Error('Database is closed.');
 
           case 2:
-            options = new LLUOptions(this.options);
             hwm = 256 << 20;
-
+            options = new LLUOptions(this.options);
 
             options.createIfMissing = true;
             options.errorIfExists = true;
 
             tmp = new LowlevelUp(this.backend, path, options);
-            _context11.next = 9;
+            _context9.next = 9;
             return tmp.open();
 
           case 9:
-            batch = tmp.batch();
-            total = 0;
             iter = this.iterator({
               keys: true,
               values: true
             });
+            batch = tmp.batch();
+            total = 0;
 
           case 12:
-            _context11.next = 14;
+            _context9.next = 14;
             return iter.next();
 
           case 14:
-            item = _context11.sent;
-
-            if (item) {
-              _context11.next = 17;
+            if (!_context9.sent) {
+              _context9.next = 36;
               break;
             }
 
-            return _context11.abrupt('break', 36);
+            key = iter.key, value = iter.value;
 
-          case 17:
 
-            batch.put(item.key, item.value);
-            total += item.value.length;
+            batch.put(key, value);
+
+            total += key.length + 80;
+            total += value.length + 80;
 
             if (!(total >= hwm)) {
-              _context11.next = 34;
+              _context9.next = 34;
               break;
             }
 
             total = 0;
-            _context11.prev = 21;
-            _context11.next = 24;
+
+            _context9.prev = 21;
+            _context9.next = 24;
             return batch.write();
 
           case 24:
-            _context11.next = 33;
+            _context9.next = 33;
             break;
 
           case 26:
-            _context11.prev = 26;
-            _context11.t0 = _context11['catch'](21);
-            _context11.next = 30;
+            _context9.prev = 26;
+            _context9.t0 = _context9['catch'](21);
+            _context9.next = 30;
             return iter.end();
 
           case 30:
-            _context11.next = 32;
+            _context9.next = 32;
             return tmp.close();
 
           case 32:
-            throw _context11.t0;
+            throw _context9.t0;
 
           case 33:
+
             batch = tmp.batch();
 
           case 34:
-            _context11.next = 12;
+            _context9.next = 12;
             break;
 
           case 36:
-            _context11.prev = 36;
-            _context11.next = 39;
+            _context9.prev = 36;
+            _context9.next = 39;
             return batch.write();
 
           case 39:
-            _context11.prev = 39;
-            _context11.next = 42;
+            _context9.prev = 39;
+            _context9.next = 42;
             return tmp.close();
 
           case 42:
-            return _context11.finish(39);
+            return _context9.finish(39);
 
           case 43:
           case 'end':
-            return _context11.stop();
+            return _context9.stop();
         }
       }
-    }, _callee11, this, [[21, 26], [36,, 39, 43]]);
+    }, _callee9, this, [[21, 26], [36,, 39, 43]]);
   }));
 
   function clone(_x7) {
-    return _ref11.apply(this, arguments);
+    return _ref9.apply(this, arguments);
   }
 
   return clone;
@@ -1187,10 +963,10 @@ Batch.prototype.del = function del(key) {
  */
 
 Batch.prototype.write = function write() {
-  var _this12 = this;
+  var _this11 = this;
 
   return new _promise2.default(function (resolve, reject) {
-    _this12.batch.write(co.wrap(resolve, reject));
+    _this11.batch.write(wrap(resolve, reject));
   });
 };
 
@@ -1212,35 +988,236 @@ Batch.prototype.clear = function clear() {
  */
 
 function Iterator(db, options) {
-  options = new IteratorOptions(options);
-  options.keyAsBuffer = db.options.bufferKeys;
+  this.options = new IteratorOptions(options);
+  this.options.keyAsBuffer = db.options.bufferKeys;
 
-  this.iter = db.db.iterator(options);
+  this.iter = db.binding.iterator(this.options);
+  this.leveldown = db.leveldown;
+
+  this.cache = [];
+  this.finished = false;
+
+  this.key = null;
+  this.value = null;
+  this.valid = true;
 }
+
+/**
+ * Clean up iterator.
+ * @private
+ */
+
+Iterator.prototype.cleanup = function cleanup() {
+  this.cache = [];
+  this.finished = true;
+  this.key = null;
+  this.value = null;
+  this.valid = false;
+};
+
+/**
+ * For each.
+ * @returns {Promise}
+ */
+
+Iterator.prototype.each = function () {
+  var _ref10 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee10(cb) {
+    var _options, keys, values, key, value, result;
+
+    return _regenerator2.default.wrap(function _callee10$(_context10) {
+      while (1) {
+        switch (_context10.prev = _context10.next) {
+          case 0:
+            assert(this.valid);
+
+            _options = this.options, keys = _options.keys, values = _options.values;
+
+          case 2:
+            if (this.finished) {
+              _context10.next = 30;
+              break;
+            }
+
+            _context10.next = 5;
+            return this.read();
+
+          case 5:
+            if (!(this.cache.length > 0)) {
+              _context10.next = 28;
+              break;
+            }
+
+            key = this.cache.pop();
+            value = this.cache.pop();
+            result = null;
+            _context10.prev = 9;
+
+            if (keys && values) result = cb(key, value);else if (keys) result = cb(key);else if (values) result = cb(value);else assert(false);
+
+            if (!(result instanceof _promise2.default)) {
+              _context10.next = 15;
+              break;
+            }
+
+            _context10.next = 14;
+            return result;
+
+          case 14:
+            result = _context10.sent;
+
+          case 15:
+            _context10.next = 22;
+            break;
+
+          case 17:
+            _context10.prev = 17;
+            _context10.t0 = _context10['catch'](9);
+            _context10.next = 21;
+            return this.end();
+
+          case 21:
+            throw _context10.t0;
+
+          case 22:
+            if (!(result === false)) {
+              _context10.next = 26;
+              break;
+            }
+
+            _context10.next = 25;
+            return this.end();
+
+          case 25:
+            return _context10.abrupt('break', 28);
+
+          case 26:
+            _context10.next = 5;
+            break;
+
+          case 28:
+            _context10.next = 2;
+            break;
+
+          case 30:
+          case 'end':
+            return _context10.stop();
+        }
+      }
+    }, _callee10, this, [[9, 17]]);
+  }));
+
+  function each(_x8) {
+    return _ref10.apply(this, arguments);
+  }
+
+  return each;
+}();
 
 /**
  * Seek to the next key.
  * @returns {Promise}
  */
 
-Iterator.prototype.next = function next() {
-  var _this13 = this;
+Iterator.prototype.next = function () {
+  var _ref11 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee11() {
+    return _regenerator2.default.wrap(function _callee11$(_context11) {
+      while (1) {
+        switch (_context11.prev = _context11.next) {
+          case 0:
+            assert(this.valid);
+
+            if (this.finished) {
+              _context11.next = 5;
+              break;
+            }
+
+            if (!(this.cache.length === 0)) {
+              _context11.next = 5;
+              break;
+            }
+
+            _context11.next = 5;
+            return this.read();
+
+          case 5:
+            if (!(this.cache.length > 0)) {
+              _context11.next = 9;
+              break;
+            }
+
+            this.key = this.cache.pop();
+            this.value = this.cache.pop();
+            return _context11.abrupt('return', true);
+
+          case 9:
+
+            assert(this.finished);
+
+            this.cleanup();
+
+            return _context11.abrupt('return', false);
+
+          case 12:
+          case 'end':
+            return _context11.stop();
+        }
+      }
+    }, _callee11, this);
+  }));
+
+  function next() {
+    return _ref11.apply(this, arguments);
+  }
+
+  return next;
+}();
+
+/**
+ * Seek to the next key (buffer values).
+ * @private
+ * @returns {Promise}
+ */
+
+Iterator.prototype.read = function read() {
+  var _this12 = this;
 
   return new _promise2.default(function (resolve, reject) {
-    _this13.iter.next(function (err, key, value) {
+    if (!_this12.leveldown) {
+      _this12.iter.next(function (err, key, value) {
+        if (err) {
+          _this12.cleanup();
+          _this12.iter.end(function () {
+            return reject(err);
+          });
+          return;
+        }
+
+        if (key === undefined && value === undefined) {
+          _this12.cleanup();
+          _this12.iter.end(wrap(resolve, reject));
+          return;
+        }
+
+        _this12.cache = [value, key];
+
+        resolve();
+      });
+      return;
+    }
+
+    _this12.iter.next(function (err, cache, finished) {
       if (err) {
-        _this13.iter.end(function () {
+        _this12.cleanup();
+        _this12.iter.end(function () {
           return reject(err);
         });
         return;
       }
 
-      if (key === undefined && value === undefined) {
-        _this13.iter.end(co.wrap(resolve, reject));
-        return;
-      }
+      _this12.cache = cache;
+      _this12.finished = finished;
 
-      resolve(new IteratorItem(key, value));
+      resolve();
     });
   });
 };
@@ -1251,6 +1228,7 @@ Iterator.prototype.next = function next() {
  */
 
 Iterator.prototype.seek = function seek(key) {
+  assert(this.valid);
   this.iter.seek(key);
 };
 
@@ -1260,10 +1238,11 @@ Iterator.prototype.seek = function seek(key) {
  */
 
 Iterator.prototype.end = function end() {
-  var _this14 = this;
+  var _this13 = this;
 
   return new _promise2.default(function (resolve, reject) {
-    _this14.iter.end(co.wrap(resolve, reject));
+    _this13.cleanup();
+    _this13.iter.end(wrap(resolve, reject));
   });
 };
 
@@ -1401,6 +1380,8 @@ LLUOptions.prototype.fromOptions = function fromOptions(options) {
 function IteratorOptions(options) {
   this.gte = null;
   this.lte = null;
+  this.gt = null;
+  this.lt = null;
   this.keys = true;
   this.values = false;
   this.fillCache = false;
@@ -1435,6 +1416,16 @@ IteratorOptions.prototype.fromOptions = function fromOptions(options) {
     this.lte = options.lte;
   }
 
+  if (options.gt != null) {
+    assert(Buffer.isBuffer(options.gt) || typeof options.gt === 'string');
+    this.gt = options.gt;
+  }
+
+  if (options.lt != null) {
+    assert(Buffer.isBuffer(options.lt) || typeof options.lt === 'string');
+    this.lt = options.lt;
+  }
+
   if (options.keys != null) {
     assert(typeof options.keys === 'boolean');
     this.keys = options.keys;
@@ -1453,11 +1444,6 @@ IteratorOptions.prototype.fromOptions = function fromOptions(options) {
   if (options.keyAsBuffer != null) {
     assert(typeof options.keyAsBuffer === 'boolean');
     this.keyAsBuffer = options.keyAsBuffer;
-  }
-
-  if (options.valueAsBuffer != null) {
-    assert(typeof options.valueAsBuffer === 'boolean');
-    this.valueAsBuffer = options.valueAsBuffer;
   }
 
   if (options.reverse != null) {
@@ -1484,6 +1470,16 @@ function isNotFound(err) {
   if (!err) return false;
 
   return err.notFound || err.type === 'NotFoundError' || /not\s*found/i.test(err.message);
+}
+
+function wrap(resolve, reject) {
+  return function (err, result) {
+    if (err) {
+      reject(err);
+      return;
+    }
+    resolve(result);
+  };
 }
 
 VERSION_ERROR = 'Warning:' + ' Your database does not match the current database version.' + ' This is likely because the database layout or serialization' + ' format has changed drastically. If you want to dump your' + ' data, downgrade to your previous version first. If you do' + ' not think you should be seeing this error, post an issue on' + ' the repo.';

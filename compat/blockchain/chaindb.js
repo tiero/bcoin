@@ -45,7 +45,6 @@ var Amount = require('../btc/amount');
 var encoding = require('../utils/encoding');
 var Network = require('../protocol/network');
 var CoinView = require('../coins/coinview');
-var Coins = require('../coins/coins');
 var UndoCoins = require('../coins/undocoins');
 var LDB = require('../db/ldb');
 var layout = require('./layout');
@@ -2209,7 +2208,7 @@ ChainDB.prototype.hasCoins = function () {
 
 ChainDB.prototype.getCoinView = function () {
   var _ref26 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee26(tx) {
-    var view, _iteratorNormalCompletion5, _didIteratorError5, _iteratorError5, _iterator5, _step5, _ref27, prevout, coin, coins;
+    var view, _iteratorNormalCompletion5, _didIteratorError5, _iteratorError5, _iterator5, _step5, _ref27, prevout, coin;
 
     return _regenerator2.default.wrap(function _callee26$(_context26) {
       while (1) {
@@ -2224,7 +2223,7 @@ ChainDB.prototype.getCoinView = function () {
 
           case 6:
             if (_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done) {
-              _context26.next = 20;
+              _context26.next = 16;
               break;
             }
 
@@ -2236,68 +2235,57 @@ ChainDB.prototype.getCoinView = function () {
           case 11:
             coin = _context26.sent;
 
-            if (coin) {
-              _context26.next = 16;
-              break;
-            }
 
-            coins = new Coins();
+            if (coin) view.addEntry(prevout, coin);
 
-            view.add(prevout.hash, coins);
-            return _context26.abrupt('continue', 17);
-
-          case 16:
-
-            view.addEntry(prevout, coin);
-
-          case 17:
+          case 13:
             _iteratorNormalCompletion5 = true;
             _context26.next = 6;
             break;
 
-          case 20:
-            _context26.next = 26;
+          case 16:
+            _context26.next = 22;
             break;
 
-          case 22:
-            _context26.prev = 22;
+          case 18:
+            _context26.prev = 18;
             _context26.t0 = _context26['catch'](4);
             _didIteratorError5 = true;
             _iteratorError5 = _context26.t0;
 
-          case 26:
-            _context26.prev = 26;
-            _context26.prev = 27;
+          case 22:
+            _context26.prev = 22;
+            _context26.prev = 23;
 
             if (!_iteratorNormalCompletion5 && _iterator5.return) {
               _iterator5.return();
             }
 
-          case 29:
-            _context26.prev = 29;
+          case 25:
+            _context26.prev = 25;
 
             if (!_didIteratorError5) {
-              _context26.next = 32;
+              _context26.next = 28;
               break;
             }
 
             throw _iteratorError5;
 
-          case 32:
-            return _context26.finish(29);
+          case 28:
+            return _context26.finish(25);
 
-          case 33:
-            return _context26.finish(26);
+          case 29:
+            return _context26.finish(22);
 
-          case 34:
+          case 30:
             return _context26.abrupt('return', view);
 
-          case 35:
+          case 31:
           case 'end':
             return _context26.stop();
         }
       }
-    }, _callee26, this, [[4, 22, 26, 34], [27,, 29, 33]]);
+    }, _callee26, this, [[4, 18, 22, 30], [23,, 25, 29]]);
   }));
 
   function getCoinView(_x20) {
@@ -2315,7 +2303,7 @@ ChainDB.prototype.getCoinView = function () {
 
 ChainDB.prototype.getSpentView = function () {
   var _ref28 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee27(tx) {
-    var view, _iteratorNormalCompletion6, _didIteratorError6, _iteratorError6, _iterator6, _step6, _ref29, _ref30, hash, coins, meta;
+    var view, _iteratorNormalCompletion6, _didIteratorError6, _iteratorError6, _iterator6, _step6, _ref29, prevout, hash, index, meta, _tx, height;
 
     return _regenerator2.default.wrap(function _callee27$(_context27) {
       while (1) {
@@ -2330,7 +2318,7 @@ ChainDB.prototype.getSpentView = function () {
             _didIteratorError6 = false;
             _iteratorError6 = undefined;
             _context27.prev = 6;
-            _iterator6 = (0, _getIterator3.default)(view.map);
+            _iterator6 = (0, _getIterator3.default)(tx.inputs);
 
           case 8:
             if (_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done) {
@@ -2339,34 +2327,35 @@ ChainDB.prototype.getSpentView = function () {
             }
 
             _ref29 = _step6.value;
-            _ref30 = (0, _slicedToArray3.default)(_ref29, 2);
-            hash = _ref30[0];
-            coins = _ref30[1];
+            prevout = _ref29.prevout;
 
-            if (coins.isEmpty()) {
-              _context27.next = 15;
+            if (!view.hasEntry(prevout)) {
+              _context27.next = 13;
               break;
             }
 
             return _context27.abrupt('continue', 21);
 
-          case 15:
-            _context27.next = 17;
+          case 13:
+            hash = prevout.hash, index = prevout.index;
+            _context27.next = 16;
             return this.getMeta(hash);
 
-          case 17:
+          case 16:
             meta = _context27.sent;
 
             if (meta) {
-              _context27.next = 20;
+              _context27.next = 19;
               break;
             }
 
             return _context27.abrupt('continue', 21);
 
-          case 20:
+          case 19:
+            _tx = meta.tx, height = meta.height;
 
-            view.addTX(meta.tx, meta.height);
+
+            if (index < _tx.outputs.length) view.addIndex(_tx, index, height);
 
           case 21:
             _iteratorNormalCompletion6 = true;
@@ -2432,7 +2421,7 @@ ChainDB.prototype.getSpentView = function () {
  */
 
 ChainDB.prototype.getUndoCoins = function () {
-  var _ref31 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee28(hash) {
+  var _ref30 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee28(hash) {
     var data;
     return _regenerator2.default.wrap(function _callee28$(_context28) {
       while (1) {
@@ -2463,7 +2452,7 @@ ChainDB.prototype.getUndoCoins = function () {
   }));
 
   function getUndoCoins(_x22) {
-    return _ref31.apply(this, arguments);
+    return _ref30.apply(this, arguments);
   }
 
   return getUndoCoins;
@@ -2476,7 +2465,7 @@ ChainDB.prototype.getUndoCoins = function () {
  */
 
 ChainDB.prototype.getBlock = function () {
-  var _ref32 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee29(hash) {
+  var _ref31 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee29(hash) {
     var data;
     return _regenerator2.default.wrap(function _callee29$(_context29) {
       while (1) {
@@ -2507,7 +2496,7 @@ ChainDB.prototype.getBlock = function () {
   }));
 
   function getBlock(_x23) {
-    return _ref32.apply(this, arguments);
+    return _ref31.apply(this, arguments);
   }
 
   return getBlock;
@@ -2520,7 +2509,7 @@ ChainDB.prototype.getBlock = function () {
  */
 
 ChainDB.prototype.getRawBlock = function () {
-  var _ref33 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee30(block) {
+  var _ref32 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee30(block) {
     var hash;
     return _regenerator2.default.wrap(function _callee30$(_context30) {
       while (1) {
@@ -2563,7 +2552,7 @@ ChainDB.prototype.getRawBlock = function () {
   }));
 
   function getRawBlock(_x24) {
-    return _ref33.apply(this, arguments);
+    return _ref32.apply(this, arguments);
   }
 
   return getRawBlock;
@@ -2576,7 +2565,7 @@ ChainDB.prototype.getRawBlock = function () {
  */
 
 ChainDB.prototype.getBlockView = function () {
-  var _ref34 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee31(block) {
+  var _ref33 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee31(block) {
     var view, undo, i, tx, j, input;
     return _regenerator2.default.wrap(function _callee31$(_context31) {
       while (1) {
@@ -2623,7 +2612,7 @@ ChainDB.prototype.getBlockView = function () {
   }));
 
   function getBlockView(_x25) {
-    return _ref34.apply(this, arguments);
+    return _ref33.apply(this, arguments);
   }
 
   return getBlockView;
@@ -2636,7 +2625,7 @@ ChainDB.prototype.getBlockView = function () {
  */
 
 ChainDB.prototype.getMeta = function () {
-  var _ref35 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee32(hash) {
+  var _ref34 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee32(hash) {
     var data;
     return _regenerator2.default.wrap(function _callee32$(_context32) {
       while (1) {
@@ -2675,7 +2664,7 @@ ChainDB.prototype.getMeta = function () {
   }));
 
   function getMeta(_x26) {
-    return _ref35.apply(this, arguments);
+    return _ref34.apply(this, arguments);
   }
 
   return getMeta;
@@ -2688,7 +2677,7 @@ ChainDB.prototype.getMeta = function () {
  */
 
 ChainDB.prototype.getTX = function () {
-  var _ref36 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee33(hash) {
+  var _ref35 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee33(hash) {
     var meta;
     return _regenerator2.default.wrap(function _callee33$(_context33) {
       while (1) {
@@ -2719,7 +2708,7 @@ ChainDB.prototype.getTX = function () {
   }));
 
   function getTX(_x27) {
-    return _ref36.apply(this, arguments);
+    return _ref35.apply(this, arguments);
   }
 
   return getTX;
@@ -2731,7 +2720,7 @@ ChainDB.prototype.getTX = function () {
  */
 
 ChainDB.prototype.hasTX = function () {
-  var _ref37 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee34(hash) {
+  var _ref36 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee34(hash) {
     return _regenerator2.default.wrap(function _callee34$(_context34) {
       while (1) {
         switch (_context34.prev = _context34.next) {
@@ -2759,7 +2748,7 @@ ChainDB.prototype.hasTX = function () {
   }));
 
   function hasTX(_x28) {
-    return _ref37.apply(this, arguments);
+    return _ref36.apply(this, arguments);
   }
 
   return hasTX;
@@ -2772,8 +2761,8 @@ ChainDB.prototype.hasTX = function () {
  */
 
 ChainDB.prototype.getCoinsByAddress = function () {
-  var _ref38 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee35(addrs) {
-    var coins, _iteratorNormalCompletion7, _didIteratorError7, _iteratorError7, _iterator7, _step7, addr, hash, keys, _iteratorNormalCompletion8, _didIteratorError8, _iteratorError8, _iterator8, _step8, _ref39, _ref40, _hash, index, coin;
+  var _ref37 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee35(addrs) {
+    var coins, _iteratorNormalCompletion7, _didIteratorError7, _iteratorError7, _iterator7, _step7, addr, hash, keys, _iteratorNormalCompletion8, _didIteratorError8, _iteratorError8, _iterator8, _step8, _ref38, _ref39, _hash, index, coin;
 
     return _regenerator2.default.wrap(function _callee35$(_context35) {
       while (1) {
@@ -2826,10 +2815,10 @@ ChainDB.prototype.getCoinsByAddress = function () {
               break;
             }
 
-            _ref39 = _step8.value;
-            _ref40 = (0, _slicedToArray3.default)(_ref39, 2);
-            _hash = _ref40[0];
-            index = _ref40[1];
+            _ref38 = _step8.value;
+            _ref39 = (0, _slicedToArray3.default)(_ref38, 2);
+            _hash = _ref39[0];
+            index = _ref39[1];
             _context35.next = 27;
             return this.getCoin(_hash, index);
 
@@ -2929,7 +2918,7 @@ ChainDB.prototype.getCoinsByAddress = function () {
   }));
 
   function getCoinsByAddress(_x29) {
-    return _ref38.apply(this, arguments);
+    return _ref37.apply(this, arguments);
   }
 
   return getCoinsByAddress;
@@ -2942,7 +2931,7 @@ ChainDB.prototype.getCoinsByAddress = function () {
  */
 
 ChainDB.prototype.getHashesByAddress = function () {
-  var _ref41 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee36(addrs) {
+  var _ref40 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee36(addrs) {
     var hashes, _iteratorNormalCompletion9, _didIteratorError9, _iteratorError9, _iterator9, _step9, addr, hash;
 
     return _regenerator2.default.wrap(function _callee36$(_context36) {
@@ -3033,7 +3022,7 @@ ChainDB.prototype.getHashesByAddress = function () {
   }));
 
   function getHashesByAddress(_x30) {
-    return _ref41.apply(this, arguments);
+    return _ref40.apply(this, arguments);
   }
 
   return getHashesByAddress;
@@ -3046,7 +3035,7 @@ ChainDB.prototype.getHashesByAddress = function () {
  */
 
 ChainDB.prototype.getTXByAddress = function () {
-  var _ref42 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee37(addrs) {
+  var _ref41 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee37(addrs) {
     var mtxs, out, _iteratorNormalCompletion10, _didIteratorError10, _iteratorError10, _iterator10, _step10, mtx;
 
     return _regenerator2.default.wrap(function _callee37$(_context37) {
@@ -3114,7 +3103,7 @@ ChainDB.prototype.getTXByAddress = function () {
   }));
 
   function getTXByAddress(_x31) {
-    return _ref42.apply(this, arguments);
+    return _ref41.apply(this, arguments);
   }
 
   return getTXByAddress;
@@ -3127,7 +3116,7 @@ ChainDB.prototype.getTXByAddress = function () {
  */
 
 ChainDB.prototype.getMetaByAddress = function () {
-  var _ref43 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee38(addrs) {
+  var _ref42 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee38(addrs) {
     var hashes, txs, _iteratorNormalCompletion11, _didIteratorError11, _iteratorError11, _iterator11, _step11, hash, tx;
 
     return _regenerator2.default.wrap(function _callee38$(_context38) {
@@ -3224,7 +3213,7 @@ ChainDB.prototype.getMetaByAddress = function () {
   }));
 
   function getMetaByAddress(_x32) {
-    return _ref43.apply(this, arguments);
+    return _ref42.apply(this, arguments);
   }
 
   return getMetaByAddress;
@@ -3239,8 +3228,8 @@ ChainDB.prototype.getMetaByAddress = function () {
  */
 
 ChainDB.prototype.scan = function () {
-  var _ref44 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee39(start, filter, iter) {
-    var entry, total, block, txs, i, tx, found, j, output, hash, prevout, _iteratorNormalCompletion12, _didIteratorError12, _iteratorError12, _iterator12, _step12, _ref45, _prevout;
+  var _ref43 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee39(start, filter, iter) {
+    var entry, total, block, txs, i, tx, found, j, output, hash, prevout, _iteratorNormalCompletion12, _didIteratorError12, _iteratorError12, _iterator12, _step12, _ref44, _prevout;
 
     return _regenerator2.default.wrap(function _callee39$(_context39) {
       while (1) {
@@ -3394,8 +3383,8 @@ ChainDB.prototype.scan = function () {
               break;
             }
 
-            _ref45 = _step12.value;
-            _prevout = _ref45.prevout;
+            _ref44 = _step12.value;
+            _prevout = _ref44.prevout;
 
             if (!filter.test(_prevout.toRaw())) {
               _context39.next = 58;
@@ -3475,7 +3464,7 @@ ChainDB.prototype.scan = function () {
   }));
 
   function scan(_x33, _x34, _x35) {
-    return _ref44.apply(this, arguments);
+    return _ref43.apply(this, arguments);
   }
 
   return scan;
@@ -3493,7 +3482,7 @@ ChainDB.prototype.scan = function () {
  */
 
 ChainDB.prototype.save = function () {
-  var _ref46 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee40(entry, block, view) {
+  var _ref45 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee40(entry, block, view) {
     return _regenerator2.default.wrap(function _callee40$(_context40) {
       while (1) {
         switch (_context40.prev = _context40.next) {
@@ -3527,7 +3516,7 @@ ChainDB.prototype.save = function () {
   }));
 
   function save(_x36, _x37, _x38) {
-    return _ref46.apply(this, arguments);
+    return _ref45.apply(this, arguments);
   }
 
   return save;
@@ -3543,7 +3532,7 @@ ChainDB.prototype.save = function () {
  */
 
 ChainDB.prototype._save = function () {
-  var _ref47 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee41(entry, block, view) {
+  var _ref46 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee41(entry, block, view) {
     var hash;
     return _regenerator2.default.wrap(function _callee41$(_context41) {
       while (1) {
@@ -3604,7 +3593,7 @@ ChainDB.prototype._save = function () {
   }));
 
   function _save(_x39, _x40, _x41) {
-    return _ref47.apply(this, arguments);
+    return _ref46.apply(this, arguments);
   }
 
   return _save;
@@ -3619,7 +3608,7 @@ ChainDB.prototype._save = function () {
  */
 
 ChainDB.prototype.reconnect = function () {
-  var _ref48 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee42(entry, block, view) {
+  var _ref47 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee42(entry, block, view) {
     return _regenerator2.default.wrap(function _callee42$(_context42) {
       while (1) {
         switch (_context42.prev = _context42.next) {
@@ -3653,7 +3642,7 @@ ChainDB.prototype.reconnect = function () {
   }));
 
   function reconnect(_x42, _x43, _x44) {
-    return _ref48.apply(this, arguments);
+    return _ref47.apply(this, arguments);
   }
 
   return reconnect;
@@ -3669,7 +3658,7 @@ ChainDB.prototype.reconnect = function () {
  */
 
 ChainDB.prototype._reconnect = function () {
-  var _ref49 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee43(entry, block, view) {
+  var _ref48 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee43(entry, block, view) {
     var hash;
     return _regenerator2.default.wrap(function _callee43$(_context43) {
       while (1) {
@@ -3711,7 +3700,7 @@ ChainDB.prototype._reconnect = function () {
   }));
 
   function _reconnect(_x45, _x46, _x47) {
-    return _ref49.apply(this, arguments);
+    return _ref48.apply(this, arguments);
   }
 
   return _reconnect;
@@ -3725,7 +3714,7 @@ ChainDB.prototype._reconnect = function () {
  */
 
 ChainDB.prototype.disconnect = function () {
-  var _ref50 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee44(entry, block) {
+  var _ref49 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee44(entry, block) {
     var view;
     return _regenerator2.default.wrap(function _callee44$(_context44) {
       while (1) {
@@ -3766,7 +3755,7 @@ ChainDB.prototype.disconnect = function () {
   }));
 
   function disconnect(_x48, _x49) {
-    return _ref50.apply(this, arguments);
+    return _ref49.apply(this, arguments);
   }
 
   return disconnect;
@@ -3781,7 +3770,7 @@ ChainDB.prototype.disconnect = function () {
  */
 
 ChainDB.prototype._disconnect = function () {
-  var _ref51 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee45(entry, block) {
+  var _ref50 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee45(entry, block) {
     var view;
     return _regenerator2.default.wrap(function _callee45$(_context45) {
       while (1) {
@@ -3819,7 +3808,7 @@ ChainDB.prototype._disconnect = function () {
   }));
 
   function _disconnect(_x50, _x51) {
-    return _ref51.apply(this, arguments);
+    return _ref50.apply(this, arguments);
   }
 
   return _disconnect;
@@ -3873,7 +3862,7 @@ ChainDB.prototype.saveUpdates = function saveUpdates() {
  */
 
 ChainDB.prototype.reset = function () {
-  var _ref52 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee46(block) {
+  var _ref51 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee46(block) {
     var entry, tip;
     return _regenerator2.default.wrap(function _callee46$(_context46) {
       while (1) {
@@ -4013,7 +4002,7 @@ ChainDB.prototype.reset = function () {
   }));
 
   function reset(_x52) {
-    return _ref52.apply(this, arguments);
+    return _ref51.apply(this, arguments);
   }
 
   return reset;
@@ -4025,7 +4014,7 @@ ChainDB.prototype.reset = function () {
  */
 
 ChainDB.prototype.removeChains = function () {
-  var _ref53 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee47() {
+  var _ref52 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee47() {
     var tips, _iteratorNormalCompletion14, _didIteratorError14, _iteratorError14, _iterator14, _step14, tip;
 
     return _regenerator2.default.wrap(function _callee47$(_context47) {
@@ -4123,7 +4112,7 @@ ChainDB.prototype.removeChains = function () {
   }));
 
   function removeChains() {
-    return _ref53.apply(this, arguments);
+    return _ref52.apply(this, arguments);
   }
 
   return removeChains;
@@ -4137,7 +4126,7 @@ ChainDB.prototype.removeChains = function () {
  */
 
 ChainDB.prototype._removeChain = function () {
-  var _ref54 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee48(hash) {
+  var _ref53 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee48(hash) {
     var tip;
     return _regenerator2.default.wrap(function _callee48$(_context48) {
       while (1) {
@@ -4207,7 +4196,7 @@ ChainDB.prototype._removeChain = function () {
   }));
 
   function _removeChain(_x53) {
-    return _ref54.apply(this, arguments);
+    return _ref53.apply(this, arguments);
   }
 
   return _removeChain;
@@ -4223,7 +4212,7 @@ ChainDB.prototype._removeChain = function () {
  */
 
 ChainDB.prototype.saveBlock = function () {
-  var _ref55 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee49(entry, block, view) {
+  var _ref54 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee49(entry, block, view) {
     var hash;
     return _regenerator2.default.wrap(function _callee49$(_context49) {
       while (1) {
@@ -4264,7 +4253,7 @@ ChainDB.prototype.saveBlock = function () {
   }));
 
   function saveBlock(_x54, _x55, _x56) {
-    return _ref55.apply(this, arguments);
+    return _ref54.apply(this, arguments);
   }
 
   return saveBlock;
@@ -4278,7 +4267,7 @@ ChainDB.prototype.saveBlock = function () {
  */
 
 ChainDB.prototype.removeBlock = function () {
-  var _ref56 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee50(entry) {
+  var _ref55 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee50(entry) {
     var block;
     return _regenerator2.default.wrap(function _callee50$(_context50) {
       while (1) {
@@ -4324,7 +4313,7 @@ ChainDB.prototype.removeBlock = function () {
   }));
 
   function removeBlock(_x57) {
-    return _ref56.apply(this, arguments);
+    return _ref55.apply(this, arguments);
   }
 
   return removeBlock;
@@ -4343,24 +4332,24 @@ ChainDB.prototype.saveView = function saveView(view) {
 
   try {
     for (var _iterator15 = (0, _getIterator3.default)(view.map), _step15; !(_iteratorNormalCompletion15 = (_step15 = _iterator15.next()).done); _iteratorNormalCompletion15 = true) {
-      var _ref57 = _step15.value;
+      var _ref56 = _step15.value;
 
-      var _ref58 = (0, _slicedToArray3.default)(_ref57, 2);
+      var _ref57 = (0, _slicedToArray3.default)(_ref56, 2);
 
-      var hash = _ref58[0];
-      var coins = _ref58[1];
+      var hash = _ref57[0];
+      var coins = _ref57[1];
       var _iteratorNormalCompletion16 = true;
       var _didIteratorError16 = false;
       var _iteratorError16 = undefined;
 
       try {
         for (var _iterator16 = (0, _getIterator3.default)(coins.outputs), _step16; !(_iteratorNormalCompletion16 = (_step16 = _iterator16.next()).done); _iteratorNormalCompletion16 = true) {
-          var _ref59 = _step16.value;
+          var _ref58 = _step16.value;
 
-          var _ref60 = (0, _slicedToArray3.default)(_ref59, 2);
+          var _ref59 = (0, _slicedToArray3.default)(_ref58, 2);
 
-          var index = _ref60[0];
-          var coin = _ref60[1];
+          var index = _ref59[0];
+          var coin = _ref59[1];
 
           if (coin.spent) {
             this.del(layout.c(hash, index));
@@ -4413,8 +4402,8 @@ ChainDB.prototype.saveView = function saveView(view) {
  */
 
 ChainDB.prototype.connectBlock = function () {
-  var _ref61 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee51(entry, block, view) {
-    var hash, i, tx, _iteratorNormalCompletion17, _didIteratorError17, _iteratorError17, _iterator17, _step17, _ref62, prevout, _iteratorNormalCompletion18, _didIteratorError18, _iteratorError18, _iterator18, _step18, output;
+  var _ref60 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee51(entry, block, view) {
+    var hash, i, tx, _iteratorNormalCompletion17, _didIteratorError17, _iteratorError17, _iterator17, _step17, _ref61, prevout, _iteratorNormalCompletion18, _didIteratorError18, _iteratorError18, _iterator18, _step18, output;
 
     return _regenerator2.default.wrap(function _callee51$(_context51) {
       while (1) {
@@ -4464,8 +4453,8 @@ ChainDB.prototype.connectBlock = function () {
             _context51.prev = 13;
 
             for (_iterator17 = (0, _getIterator3.default)(tx.inputs); !(_iteratorNormalCompletion17 = (_step17 = _iterator17.next()).done); _iteratorNormalCompletion17 = true) {
-              _ref62 = _step17.value;
-              prevout = _ref62.prevout;
+              _ref61 = _step17.value;
+              prevout = _ref61.prevout;
 
               this.pending.spend(view.getOutput(prevout));
             }_context51.next = 21;
@@ -4597,7 +4586,7 @@ ChainDB.prototype.connectBlock = function () {
   }));
 
   function connectBlock(_x58, _x59, _x60) {
-    return _ref61.apply(this, arguments);
+    return _ref60.apply(this, arguments);
   }
 
   return connectBlock;
@@ -4611,7 +4600,7 @@ ChainDB.prototype.connectBlock = function () {
  */
 
 ChainDB.prototype.disconnectBlock = function () {
-  var _ref63 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee52(entry, block) {
+  var _ref62 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee52(entry, block) {
     var view, hash, undo, i, tx, j, prevout, _j, output;
 
     return _regenerator2.default.wrap(function _callee52$(_context52) {
@@ -4720,7 +4709,7 @@ ChainDB.prototype.disconnectBlock = function () {
   }));
 
   function disconnectBlock(_x61, _x62) {
-    return _ref63.apply(this, arguments);
+    return _ref62.apply(this, arguments);
   }
 
   return disconnectBlock;
@@ -4735,7 +4724,7 @@ ChainDB.prototype.disconnectBlock = function () {
  */
 
 ChainDB.prototype.pruneBlock = function () {
-  var _ref64 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee53(entry) {
+  var _ref63 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee53(entry) {
     var height, hash;
     return _regenerator2.default.wrap(function _callee53$(_context53) {
       while (1) {
@@ -4794,7 +4783,7 @@ ChainDB.prototype.pruneBlock = function () {
   }));
 
   function pruneBlock(_x63) {
-    return _ref64.apply(this, arguments);
+    return _ref63.apply(this, arguments);
   }
 
   return pruneBlock;
@@ -4807,7 +4796,9 @@ ChainDB.prototype.pruneBlock = function () {
 
 ChainDB.prototype.saveFlags = function saveFlags() {
   var flags = ChainFlags.fromOptions(this.options);
-  return this.db.put(layout.O, flags.toRaw());
+  var batch = this.db.batch();
+  batch.put(layout.O, flags.toRaw());
+  return batch.write();
 };
 
 /**
@@ -4865,8 +4856,8 @@ ChainDB.prototype.indexTX = function indexTX(tx, view, entry, index) {
 
     try {
       for (var _iterator20 = (0, _getIterator3.default)(tx.inputs), _step20; !(_iteratorNormalCompletion20 = (_step20 = _iterator20.next()).done); _iteratorNormalCompletion20 = true) {
-        var _ref65 = _step20.value;
-        var prevout = _ref65.prevout;
+        var _ref64 = _step20.value;
+        var prevout = _ref64.prevout;
 
         var _addr = view.getOutput(prevout).getHash();
 
@@ -4950,8 +4941,8 @@ ChainDB.prototype.unindexTX = function unindexTX(tx, view) {
 
     try {
       for (var _iterator22 = (0, _getIterator3.default)(tx.inputs), _step22; !(_iteratorNormalCompletion22 = (_step22 = _iterator22.next()).done); _iteratorNormalCompletion22 = true) {
-        var _ref66 = _step22.value;
-        var prevout = _ref66.prevout;
+        var _ref65 = _step22.value;
+        var prevout = _ref65.prevout;
 
         var _addr3 = view.getOutput(prevout).getHash();
 
@@ -5186,8 +5177,8 @@ StateCache.prototype._init = function _init() {
 
   try {
     for (var _iterator23 = (0, _getIterator3.default)(this.network.deploys), _step23; !(_iteratorNormalCompletion23 = (_step23 = _iterator23.next()).done); _iteratorNormalCompletion23 = true) {
-      var _ref67 = _step23.value;
-      var bit = _ref67.bit;
+      var _ref66 = _step23.value;
+      var bit = _ref66.bit;
 
       assert(!this.bits[bit]);
       this.bits[bit] = new _map2.default();
@@ -5242,9 +5233,9 @@ StateCache.prototype.drop = function drop() {
 
   try {
     for (var _iterator24 = (0, _getIterator3.default)(this.updates), _step24; !(_iteratorNormalCompletion24 = (_step24 = _iterator24.next()).done); _iteratorNormalCompletion24 = true) {
-      var _ref68 = _step24.value;
-      var bit = _ref68.bit;
-      var hash = _ref68.hash;
+      var _ref67 = _step24.value;
+      var bit = _ref67.bit;
+      var hash = _ref67.hash;
 
       var cache = this.bits[bit];
       assert(cache);
