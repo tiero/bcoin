@@ -54,7 +54,7 @@
   "devDependencies": {
     "bmocha": "^2.1.2"
   },
-  "main": "./lib/bcoin.js",
+  "main": "./lib/bcoin-browser.js",
   "bin": {
     "bcoin": "./bin/bcoin",
     "bcoin-node": "./bin/node",
