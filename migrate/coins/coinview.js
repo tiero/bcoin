@@ -9,6 +9,7 @@
 'use strict';
 
 const assert = require('assert');
+const {BufferMap} = require('buffer-map');
 const Coins = require('./coins');
 const UndoCoins = require('./undocoins');
 const CoinEntry = Coins.CoinEntry;
@@ -26,7 +27,7 @@ function CoinView() {
   if (!(this instanceof CoinView))
     return new CoinView();
 
-  this.map = new Map();
+  this.map = new BufferMap();
   this.undo = new UndoCoins();
 }
 
@@ -329,7 +330,7 @@ CoinView.prototype.ensureInputs = async function ensureInputs(db, tx) {
   let found = true;
 
   for (const input of tx.inputs) {
-    if (!(await this.readCoins(db, input.prevout.hash)))
+    if (!await this.readCoins(db, input.prevout.hash))
       found = false;
   }
 
